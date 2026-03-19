@@ -1,5 +1,5 @@
 import { MapBoard } from '../../components/MapBoard';
-import { factoryProfiles, regions } from '../../data/mock';
+import { factoryProfiles, regions } from '../../data/demoData';
 import { useDemoState } from '../../data/useDemoState';
 
 export function StudentReversePage() {

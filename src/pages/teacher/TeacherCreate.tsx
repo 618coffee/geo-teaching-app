@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { taskFocusOptions } from '../../data/mock';
+import { taskFocusOptions } from '../../data/demoData';
 
 export function TeacherCreatePage() {
   const [title, setTitle] = useState('工业区位选择：食品厂选址');

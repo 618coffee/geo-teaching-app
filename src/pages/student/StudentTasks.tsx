@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { tasks } from '../../data/mock';
+import { tasks } from '../../data/demoData';
 
 export function StudentTasksPage() {
   return (
