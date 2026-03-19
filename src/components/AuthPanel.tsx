@@ -7,18 +7,14 @@ type FeedbackTone = 'info' | 'success' | 'error';
 
 interface AuthPanelProps {
   onSuccess?: (user: AuthUser) => void;
+  preferredRole: UserRole;
+  preferredRoleLabel: string;
 }
 
 interface FeedbackState {
   tone: FeedbackTone;
   message: string;
 }
-
-const roleOptions: Array<{ value: UserRole; label: string }> = [
-  { value: 'student', label: '学生端' },
-  { value: 'teacher', label: '教师端' },
-  { value: 'admin', label: '运营端' },
-];
 
 const roleLabels: Record<UserRole, string> = {
   student: '学生端',
@@ -34,8 +30,8 @@ function getErrorMessage(error: unknown) {
   return '操作失败，请稍后重试。';
 }
 
-export function AuthPanel({ onSuccess }: AuthPanelProps) {
-  const { user, logout, sendVerificationCode, register, loginWithPassword, loginWithCode, detectChannel } = useAuth();
+export function AuthPanel({ onSuccess, preferredRole, preferredRoleLabel }: AuthPanelProps) {
+  const { user, logout, sendVerificationCode, register, loginWithPassword, loginWithCode, loginAsMockRole, detectChannel } = useAuth();
   const [authMode, setAuthMode] = useState<AuthMode>('login');
   const [loginMode, setLoginMode] = useState<LoginMode>('password');
   const [registerCountdown, setRegisterCountdown] = useState(0);
@@ -51,7 +47,6 @@ export function AuthPanel({ onSuccess }: AuthPanelProps) {
   });
   const [registerForm, setRegisterForm] = useState({
     displayName: '',
-    role: 'student' as UserRole,
     account: '',
     code: '',
     password: '',
@@ -118,7 +113,7 @@ export function AuthPanel({ onSuccess }: AuthPanelProps) {
     try {
       const nextUser = register({
         displayName: registerForm.displayName,
-        role: registerForm.role,
+        role: preferredRole,
         account: registerForm.account,
         code: registerForm.code,
         password: registerForm.password,
@@ -164,6 +159,19 @@ export function AuthPanel({ onSuccess }: AuthPanelProps) {
     }
   };
 
+  const enterMockRole = (role: UserRole) => {
+    try {
+      const nextUser = loginAsMockRole(role);
+      setFeedback({
+        tone: 'success',
+        message: `已切换到 ${roleLabels[role]} 的 mock 演示账号。`,
+      });
+      onSuccess?.(nextUser);
+    } catch (error) {
+      setFeedback({ tone: 'error', message: getErrorMessage(error) });
+    }
+  };
+
   if (user) {
     return (
       <section id="home-auth" className="card auth-card auth-card--session">
@@ -191,6 +199,24 @@ export function AuthPanel({ onSuccess }: AuthPanelProps) {
         <div className="callout soft auth-callout">
           当前演示版认证数据存储在浏览器本地，正式环境建议将验证码、账号和会话迁移到服务端，并接入国内短信/邮件服务。
         </div>
+        <div className="auth-mock-panel auth-mock-panel--session">
+          <div>
+            <div className="eyebrow">Mock 快速切换</div>
+            <p className="auth-mock-panel__text">不需要退出再注册，直接切到学生端、教师端、运营端的演示账号。</p>
+          </div>
+          <div className="auth-mock-actions">
+            {(Object.keys(roleLabels) as UserRole[]).map((role) => (
+              <button
+                key={role}
+                type="button"
+                className={`button ${user.role === role ? 'primary' : ''}`}
+                onClick={() => enterMockRole(role)}
+              >
+                {role === user.role ? `当前：${roleLabels[role]}` : `切换到${roleLabels[role]}`}
+              </button>
+            ))}
+          </div>
+        </div>
         <div className="hero__actions">
           <button type="button" className="button" onClick={logout}>退出登录</button>
         </div>
@@ -203,9 +229,33 @@ export function AuthPanel({ onSuccess }: AuthPanelProps) {
       <div className="auth-card__header">
         <div>
           <div className="eyebrow">统一认证入口</div>
-          <h3>手机号 / 邮箱注册登录</h3>
+          <h3>{preferredRoleLabel}账号登录 / 注册</h3>
+          <p className="auth-card__hint">
+            注册会创建当前所选身份账号；登录会按账号本身的真实身份跳转到对应工作台。
+          </p>
         </div>
-        <span className="pill">验证码注册</span>
+        <span className="pill">当前选择：{preferredRoleLabel}</span>
+      </div>
+
+      <div className="auth-mock-panel">
+        <div>
+          <div className="eyebrow">Mock 演示模式</div>
+          <p className="auth-mock-panel__text">
+            已预置三个演示账号，可直接进入不同端；如果你只是看流程，不需要先手动注册三个账号。
+          </p>
+        </div>
+        <div className="auth-mock-actions">
+          {(Object.keys(roleLabels) as UserRole[]).map((role) => (
+            <button
+              key={role}
+              type="button"
+              className={`button ${preferredRole === role ? 'primary' : ''}`}
+              onClick={() => enterMockRole(role)}
+            >
+              直接进入{roleLabels[role]}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="auth-tablist" role="tablist" aria-label="认证模式切换">
@@ -227,23 +277,6 @@ export function AuthPanel({ onSuccess }: AuthPanelProps) {
 
       {authMode === 'login' ? (
         <>
-          <div className="auth-subtabs" role="tablist" aria-label="登录方式切换">
-            <button
-              type="button"
-              className={`auth-subtab ${loginMode === 'password' ? 'active' : ''}`}
-              onClick={() => setLoginMode('password')}
-            >
-              密码登录
-            </button>
-            <button
-              type="button"
-              className={`auth-subtab ${loginMode === 'code' ? 'active' : ''}`}
-              onClick={() => setLoginMode('code')}
-            >
-              验证码登录
-            </button>
-          </div>
-
           {loginMode === 'password' ? (
             <form className="stack-md" onSubmit={submitLoginWithPassword}>
               <label className="field">
@@ -265,6 +298,12 @@ export function AuthPanel({ onSuccess }: AuthPanelProps) {
                   autoComplete="current-password"
                 />
               </label>
+              <div className="auth-switch-row">
+                <span className="auth-switch-row__label">当前使用密码登录</span>
+                <button type="button" className="auth-switch-link" onClick={() => setLoginMode('code')}>
+                  改用验证码登录
+                </button>
+              </div>
               <button type="submit" className="button primary auth-submit-button">立即登录</button>
             </form>
           ) : (
@@ -297,34 +336,31 @@ export function AuthPanel({ onSuccess }: AuthPanelProps) {
                   {loginCountdown > 0 ? `${loginCountdown}s 后重发` : '获取验证码'}
                 </button>
               </div>
+              <div className="auth-switch-row">
+                <span className="auth-switch-row__label">当前使用验证码登录</span>
+                <button type="button" className="auth-switch-link" onClick={() => setLoginMode('password')}>
+                  改用密码登录
+                </button>
+              </div>
               <button type="submit" className="button primary auth-submit-button">验证码登录</button>
             </form>
           )}
         </>
       ) : (
         <form className="stack-md" onSubmit={submitRegister}>
-          <div className="auth-grid">
-            <label className="field">
-              <span>姓名或昵称</span>
-              <input
-                value={registerForm.displayName}
-                onChange={(event) => setRegisterForm((current) => ({ ...current, displayName: event.target.value }))}
-                placeholder="例如：高一（3）班 王同学"
-                autoComplete="name"
-              />
-            </label>
-            <label className="field">
-              <span>注册身份</span>
-              <select
-                value={registerForm.role}
-                onChange={(event) => setRegisterForm((current) => ({ ...current, role: event.target.value as UserRole }))}
-              >
-                {roleOptions.map((option) => (
-                  <option key={option.value} value={option.value}>{option.label}</option>
-                ))}
-              </select>
-            </label>
+          <div className="auth-role-banner">
+            <span>当前注册身份</span>
+            <strong>{preferredRoleLabel}</strong>
           </div>
+          <label className="field">
+            <span>姓名或昵称</span>
+            <input
+              value={registerForm.displayName}
+              onChange={(event) => setRegisterForm((current) => ({ ...current, displayName: event.target.value }))}
+              placeholder="例如：高一（3）班 王同学"
+              autoComplete="name"
+            />
+          </label>
           <label className="field">
             <span>手机号或邮箱</span>
             <input

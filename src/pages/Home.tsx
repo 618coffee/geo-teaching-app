@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { canRoleAccessPath, getDefaultRouteForRole, useAuth, type AuthUser, type UserRole } from '../auth/AuthContext';
 import { AuthPanel } from '../components/AuthPanel';
@@ -42,11 +43,39 @@ const roleLabels: Record<UserRole, string> = {
   admin: '运营端',
 };
 
+function inferRoleFromPath(pathname: string | null): UserRole | null {
+  if (!pathname) {
+    return null;
+  }
+
+  if (pathname.startsWith('/student')) {
+    return 'student';
+  }
+
+  if (pathname.startsWith('/teacher')) {
+    return 'teacher';
+  }
+
+  if (pathname.startsWith('/admin')) {
+    return 'admin';
+  }
+
+  return null;
+}
+
 export function HomePage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { user } = useAuth();
+  const { user, loginAsMockRole } = useAuth();
   const redirectPath = searchParams.get('redirect');
+  const [selectedRole, setSelectedRole] = useState<UserRole>(inferRoleFromPath(redirectPath) ?? 'student');
+
+  useEffect(() => {
+    const nextRole = inferRoleFromPath(redirectPath);
+    if (!user && nextRole) {
+      setSelectedRole(nextRole);
+    }
+  }, [redirectPath, user]);
 
   const handleAuthSuccess = (nextUser: AuthUser) => {
     if (redirectPath && canRoleAccessPath(redirectPath, nextUser.role)) {
@@ -57,51 +86,58 @@ export function HomePage() {
     navigate(getDefaultRouteForRole(nextUser.role), { replace: true });
   };
 
-  const scrollToAuthPanel = () => {
+  const handleRoleSwitch = (role: UserRole) => {
+    setSelectedRole(role);
     document.getElementById('home-auth')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const handleEnterMockRole = (role: UserRole) => {
+    const nextUser = loginAsMockRole(role);
+    handleAuthSuccess(nextUser);
   };
 
   return (
     <div className="stack-lg">
-      <section className="home-hero-grid">
-        <section className="hero card home-hero-card">
-          <div className="hero__content">
-            <div>
-              <div className="eyebrow">认证与角色入口</div>
-              <h2>先完成统一登录注册，再按角色进入教学场景</h2>
-            </div>
-            <p className="hero__intro">
-              首页现在承担统一认证入口，支持手机号或邮箱注册、验证码校验、密码登录和验证码登录，并对学生端、教师端、运营端启用对应的角色访问控制。
-            </p>
-          </div>
-          <ul className="hero__feature-list">
-            <li>
-              <strong>手机号 / 邮箱双入口</strong>
-              面向国内用户保留手机号优先习惯，同时兼容邮箱注册与登录。
-            </li>
-            <li>
-              <strong>验证码注册闭环</strong>
-              演示版直接在界面展示验证码，正式环境可替换为短信和邮件网关。
-            </li>
-            <li>
-              <strong>按角色拦截业务页</strong>
-              未登录或角色不匹配时，自动回到首页认证区，避免越权访问。
-            </li>
-          </ul>
-          <div className="hero__actions">
-            <span className="pill">验证码注册</span>
-            <span className="pill">密码 / 验证码登录</span>
-            <span className="pill">角色路由守卫</span>
-          </div>
-        </section>
-
-        <AuthPanel onSuccess={handleAuthSuccess} />
-      </section>
-
       {redirectPath && !user && (
         <section className="callout soft">
           你刚才访问的是 <strong>{redirectPath}</strong>，请先完成登录或注册，系统会在认证成功后自动跳转回对应页面。
         </section>
+      )}
+
+      {!user && (
+        <>
+          <section className="home-entry-strip">
+            <div>
+              <div className="eyebrow">入口选择</div>
+              <h2>先选择要进入的工作台</h2>
+            </div>
+            <p className="home-entry-strip__text">
+              注册会按照当前所选身份创建账号；登录会根据账号本身的真实身份进入对应工作台。
+            </p>
+          </section>
+
+          <section className="home-role-selector" aria-label="选择工作台身份">
+            {roleCards.map((card) => (
+              <button
+                key={card.role}
+                type="button"
+                className={`home-role-option ${selectedRole === card.role ? 'active' : ''}`}
+                onClick={() => setSelectedRole(card.role)}
+                aria-pressed={selectedRole === card.role}
+              >
+                <span className="home-role-option__eyebrow">{card.eyebrow}</span>
+                <strong>{card.title}</strong>
+                <span>{card.description}</span>
+              </button>
+            ))}
+          </section>
+
+          <AuthPanel
+            onSuccess={handleAuthSuccess}
+            preferredRole={selectedRole}
+            preferredRoleLabel={roleLabels[selectedRole]}
+          />
+        </>
       )}
 
       {user && (
@@ -117,28 +153,26 @@ export function HomePage() {
         </section>
       )}
 
-      <section className="grid-3 home-role-grid">
-        {roleCards.map((card) => (
-          <article key={card.role} className={`card ${card.className}`}>
-            <div className="home-role-card__content">
-              <div className="eyebrow">{card.eyebrow}</div>
-              <h3>{card.title}</h3>
-              <p>{card.description}</p>
-            </div>
-            {user?.role === card.role ? (
-              <Link className="button home-role-card__button" to={card.to}>进入{card.title}</Link>
-            ) : user ? (
-              <button type="button" className="button home-role-card__button button-disabled">
-                当前账号属于{roleLabels[user.role]}
-              </button>
-            ) : (
-              <button type="button" className="button home-role-card__button" onClick={scrollToAuthPanel}>
-                登录后进入
-              </button>
-            )}
-          </article>
-        ))}
-      </section>
+      {user && (
+        <section className="grid-3 home-role-grid">
+          {roleCards.map((card) => (
+            <article key={card.role} className={`card ${card.className}`}>
+              <div className="home-role-card__content">
+                <div className="eyebrow">{card.eyebrow}</div>
+                <h3>{card.title}</h3>
+                <p>{card.description}</p>
+              </div>
+              {user.role === card.role ? (
+                <Link className="button home-role-card__button" to={card.to}>进入{card.title}</Link>
+              ) : (
+                <button type="button" className="button home-role-card__button" onClick={() => handleEnterMockRole(card.role)}>
+                  使用{card.title}演示账号
+                </button>
+              )}
+            </article>
+          ))}
+        </section>
+      )}
     </div>
   );
 }

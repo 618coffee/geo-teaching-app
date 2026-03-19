@@ -50,10 +50,12 @@ interface SendVerificationCodeResult {
 interface AuthContextValue {
   user: AuthUser | null;
   isAuthenticated: boolean;
+  mockUsers: AuthUser[];
   sendVerificationCode: (account: string) => SendVerificationCodeResult;
   register: (input: RegisterInput) => AuthUser;
   loginWithPassword: (input: LoginWithPasswordInput) => AuthUser;
   loginWithCode: (input: LoginWithCodeInput) => AuthUser;
+  loginAsMockRole: (role: UserRole) => AuthUser;
   logout: () => void;
   detectChannel: (value: string) => AuthChannel | null;
 }
@@ -77,6 +79,40 @@ const rolePrefixByRole: Record<UserRole, string> = {
   teacher: '/teacher',
   admin: '/admin',
 };
+
+const MOCK_AUTH_PASSWORD = 'demo123456';
+
+const MOCK_USERS: StoredAuthUser[] = [
+  {
+    id: 'mock-student',
+    account: 'student@demo.local',
+    channel: 'email',
+    role: 'student',
+    displayName: '演示学生',
+    password: MOCK_AUTH_PASSWORD,
+    createdAt: '2026-03-19T00:00:00.000Z',
+  },
+  {
+    id: 'mock-teacher',
+    account: 'teacher@demo.local',
+    channel: 'email',
+    role: 'teacher',
+    displayName: '演示教师',
+    password: MOCK_AUTH_PASSWORD,
+    createdAt: '2026-03-19T00:00:00.000Z',
+  },
+  {
+    id: 'mock-admin',
+    account: 'admin@demo.local',
+    channel: 'email',
+    role: 'admin',
+    displayName: '演示运营',
+    password: MOCK_AUTH_PASSWORD,
+    createdAt: '2026-03-19T00:00:00.000Z',
+  },
+];
+
+const MOCK_USER_ACCOUNTS = new Set(MOCK_USERS.map((user) => user.account));
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
@@ -145,11 +181,23 @@ function sanitizeUser(user: StoredAuthUser): AuthUser {
 }
 
 function readUsers() {
-  return readStoredJson<StoredAuthUser[]>(USERS_STORAGE_KEY, []);
+  const storedUsers = readStoredJson<StoredAuthUser[]>(USERS_STORAGE_KEY, []);
+  const mergedUsers = new Map<string, StoredAuthUser>();
+
+  for (const entry of [...storedUsers, ...MOCK_USERS]) {
+    if (!mergedUsers.has(entry.account)) {
+      mergedUsers.set(entry.account, entry);
+    }
+  }
+
+  return Array.from(mergedUsers.values());
 }
 
 function writeUsers(users: StoredAuthUser[]) {
-  writeStoredJson(USERS_STORAGE_KEY, users);
+  writeStoredJson(
+    USERS_STORAGE_KEY,
+    users.filter((user) => !MOCK_USER_ACCOUNTS.has(user.account)),
+  );
 }
 
 function readSessionUser() {
@@ -210,8 +258,18 @@ function verifyCode(account: string, code: string) {
   return record.channel;
 }
 
+function getMockUserByRole(role: UserRole) {
+  const nextUser = MOCK_USERS.find((item) => item.role === role);
+  if (!nextUser) {
+    throw new Error('未找到对应的演示账号。');
+  }
+
+  return nextUser;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(readSessionUser);
+  const mockUsers = MOCK_USERS.map(sanitizeUser);
 
   const sendVerificationCode = (account: string): SendVerificationCodeResult => {
     const channel = detectAuthChannel(account);
@@ -310,6 +368,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return safeUser;
   };
 
+  const loginAsMockRole = (role: UserRole) => {
+    const safeUser = sanitizeUser(getMockUserByRole(role));
+    writeSessionUser(safeUser);
+    setUser(safeUser);
+
+    return safeUser;
+  };
+
   const logout = () => {
     removeStoredValue(SESSION_STORAGE_KEY);
     setUser(null);
@@ -320,10 +386,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         user,
         isAuthenticated: Boolean(user),
+        mockUsers,
         sendVerificationCode,
         register,
         loginWithPassword,
         loginWithCode,
+        loginAsMockRole,
         logout,
         detectChannel: detectAuthChannel,
       }}
