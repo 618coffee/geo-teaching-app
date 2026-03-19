@@ -1,46 +1,178 @@
-import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { canRoleAccessPath, getDefaultRouteForRole, useAuth, type AuthUser, type UserRole } from '../auth/AuthContext';
+import { AuthPanel } from '../components/AuthPanel';
+
+const roleCards: Array<{
+  role: UserRole;
+  eyebrow: string;
+  title: string;
+  description: string;
+  to: string;
+  className: string;
+}> = [
+  {
+    role: 'student',
+    eyebrow: '学习入口',
+    title: '学生端',
+    description: '任务列表、地图选址、分析报告、方案对比、反向推荐。',
+    to: '/student/tasks',
+    className: 'home-role-card home-role-card--student',
+  },
+  {
+    role: 'teacher',
+    eyebrow: '教学入口',
+    title: '教师端',
+    description: '任务管理、发布任务、作业批阅、学情分析、课堂演示。',
+    to: '/teacher/tasks',
+    className: 'home-role-card home-role-card--teacher',
+  },
+  {
+    role: 'admin',
+    eyebrow: '管理入口',
+    title: '运营端',
+    description: '模块管理、人员管理、Prompt 配置，支撑后续平台化扩展。',
+    to: '/admin/modules',
+    className: 'home-role-card home-role-card--admin',
+  },
+];
+
+const roleLabels: Record<UserRole, string> = {
+  student: '学生端',
+  teacher: '教师端',
+  admin: '运营端',
+};
+
+function inferRoleFromPath(pathname: string | null): UserRole | null {
+  if (!pathname) {
+    return null;
+  }
+
+  if (pathname.startsWith('/student')) {
+    return 'student';
+  }
+
+  if (pathname.startsWith('/teacher')) {
+    return 'teacher';
+  }
+
+  if (pathname.startsWith('/admin')) {
+    return 'admin';
+  }
+
+  return null;
+}
 
 export function HomePage() {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const { user, loginAsMockRole } = useAuth();
+  const redirectPath = searchParams.get('redirect');
+  const [selectedRole, setSelectedRole] = useState<UserRole>(inferRoleFromPath(redirectPath) ?? 'student');
+
+  useEffect(() => {
+    const nextRole = inferRoleFromPath(redirectPath);
+    if (!user && nextRole) {
+      setSelectedRole(nextRole);
+    }
+  }, [redirectPath, user]);
+
+  const handleAuthSuccess = (nextUser: AuthUser) => {
+    if (redirectPath && canRoleAccessPath(redirectPath, nextUser.role)) {
+      navigate(redirectPath, { replace: true });
+      return;
+    }
+
+    navigate(getDefaultRouteForRole(nextUser.role), { replace: true });
+  };
+
+  const handleRoleSwitch = (role: UserRole) => {
+    setSelectedRole(role);
+    document.getElementById('home-auth')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const handleEnterMockRole = (role: UserRole) => {
+    const nextUser = loginAsMockRole(role);
+    handleAuthSuccess(nextUser);
+  };
+
   return (
     <div className="stack-lg">
-      <section className="hero card">
-        <div className="hero__content">
-          <div>
-            <div className="eyebrow">MVP 范围</div>
-            <h2>先用示例数据跑通完整教学应用</h2>
-          </div>
-          <p className="hero__intro">
-            当前版本聚焦高中地理「工业区位选择」，已将学生端、教师端、运营端统一到一个前端应用中，优先完成页面、路由、交互流程和报告展示。
-          </p>
-        </div>
-      </section>
+      {redirectPath && !user && (
+        <section className="callout soft">
+          你刚才访问的是 <strong>{redirectPath}</strong>，请先完成登录或注册，系统会在认证成功后自动跳转回对应页面。
+        </section>
+      )}
 
-      <section className="grid-3 home-role-grid">
-        <article className="card home-role-card home-role-card--student">
-          <div className="home-role-card__content">
-            <div className="eyebrow">学习入口</div>
-            <h3>学生端</h3>
-            <p>任务列表、地图选址、分析报告、方案对比、反向推荐。</p>
+      {!user && (
+        <>
+          <section className="home-entry-strip">
+            <div>
+              <div className="eyebrow">入口选择</div>
+              <h2>先选择要进入的工作台</h2>
+            </div>
+            <p className="home-entry-strip__text">
+              注册会按照当前所选身份创建账号；登录会根据账号本身的真实身份进入对应工作台。
+            </p>
+          </section>
+
+          <section className="home-role-selector" aria-label="选择工作台身份">
+            {roleCards.map((card) => (
+              <button
+                key={card.role}
+                type="button"
+                className={`home-role-option ${selectedRole === card.role ? 'active' : ''}`}
+                onClick={() => setSelectedRole(card.role)}
+                aria-pressed={selectedRole === card.role}
+              >
+                <span className="home-role-option__eyebrow">{card.eyebrow}</span>
+                <strong>{card.title}</strong>
+                <span>{card.description}</span>
+              </button>
+            ))}
+          </section>
+
+          <AuthPanel
+            onSuccess={handleAuthSuccess}
+            preferredRole={selectedRole}
+            preferredRoleLabel={roleLabels[selectedRole]}
+          />
+        </>
+      )}
+
+      {user && (
+        <section className="card home-session-card">
+          <div className="home-session-card__meta">
+            <div className="eyebrow">当前会话</div>
+            <h3>已登录为 {user.displayName}</h3>
+            <p>
+              当前账号归属 <strong>{roleLabels[user.role]}</strong>，可以直接进入对应工作台；其他角色入口会保持受限。
+            </p>
           </div>
-          <Link className="button home-role-card__button" to="/student/tasks">进入学生端</Link>
-        </article>
-        <article className="card home-role-card home-role-card--teacher">
-          <div className="home-role-card__content">
-            <div className="eyebrow">教学入口</div>
-            <h3>教师端</h3>
-            <p>任务管理、发布任务、作业批阅、学情分析、课堂演示。</p>
-          </div>
-          <Link className="button home-role-card__button" to="/teacher/tasks">进入教师端</Link>
-        </article>
-        <article className="card home-role-card home-role-card--admin">
-          <div className="home-role-card__content">
-            <div className="eyebrow">管理入口</div>
-            <h3>运营端</h3>
-            <p>模块管理、人员管理、Prompt 配置，支撑后续平台化扩展。</p>
-          </div>
-          <Link className="button home-role-card__button" to="/admin/modules">进入运营端</Link>
-        </article>
-      </section>
+          <Link className="button primary" to={getDefaultRouteForRole(user.role)}>进入我的工作台</Link>
+        </section>
+      )}
+
+      {user && (
+        <section className="grid-3 home-role-grid">
+          {roleCards.map((card) => (
+            <article key={card.role} className={`card ${card.className}`}>
+              <div className="home-role-card__content">
+                <div className="eyebrow">{card.eyebrow}</div>
+                <h3>{card.title}</h3>
+                <p>{card.description}</p>
+              </div>
+              {user.role === card.role ? (
+                <Link className="button home-role-card__button" to={card.to}>进入{card.title}</Link>
+              ) : (
+                <button type="button" className="button home-role-card__button" onClick={() => handleEnterMockRole(card.role)}>
+                  使用{card.title}演示账号
+                </button>
+              )}
+            </article>
+          ))}
+        </section>
+      )}
     </div>
   );
 }

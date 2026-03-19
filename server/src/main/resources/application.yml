@@ -1,0 +1,21 @@
+spring:
+  application:
+    name: geo-teaching-app-server
+
+server:
+  port: ${PORT:4000}
+
+app:
+  auth:
+    jwt-secret: ${JWT_SECRET:replace-this-in-production}
+    access-token-expires-in-hours: ${ACCESS_TOKEN_EXPIRES_IN_HOURS:2}
+    verification-code-ttl-seconds: ${VERIFICATION_CODE_TTL_SECONDS:300}
+    verification-code-retry-seconds: ${VERIFICATION_CODE_RETRY_SECONDS:60}
+    expose-verification-code: ${EXPOSE_VERIFICATION_CODE:true}
+    notification-provider: ${NOTIFICATION_PROVIDER:mock}
+    data-file-path: ${AUTH_DATA_FILE_PATH:./data/dev-auth-store.json}
+    cors-origins:
+      - ${CORS_ORIGIN:http://localhost:5173}
+    aliyun-sms-sign-name: ${ALIYUN_SMS_SIGN_NAME:}
+    aliyun-sms-template-code: ${ALIYUN_SMS_TEMPLATE_CODE:}
+    aliyun-email-account-name: ${ALIYUN_EMAIL_ACCOUNT_NAME:}

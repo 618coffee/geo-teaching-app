@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:server": "cd server && sh ./mvnw spring-boot:run",
     "build": "tsc -b && vite build",
+    "build:server": "cd server && sh ./mvnw package",
     "preview": "vite preview"
   },
   "dependencies": {

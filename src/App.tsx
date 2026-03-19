@@ -1,4 +1,5 @@
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom';
+import { getDefaultRouteForRole, useAuth, type UserRole } from './auth/AuthContext';
 import { AppShell } from './layouts/AppShell';
 import { HomePage } from './pages/Home';
 import { StudentTasksPage } from './pages/student/StudentTasks';
@@ -19,13 +20,29 @@ import { AdminSettingsPage } from './pages/admin/AdminSettings';
 import { AdminUsersPage } from './pages/admin/AdminUsers';
 import { AdminPromptsPage } from './pages/admin/AdminPrompts';
 
+function RoleSectionGate({ role }: { role: UserRole }) {
+  const location = useLocation();
+  const { user } = useAuth();
+
+  if (!user) {
+    const redirectTarget = `${location.pathname}${location.search}${location.hash}`;
+    return <Navigate to={`/?redirect=${encodeURIComponent(redirectTarget)}`} replace />;
+  }
+
+  if (user.role !== role) {
+    return <Navigate to={getDefaultRouteForRole(user.role)} replace />;
+  }
+
+  return <Outlet />;
+}
+
 export default function App() {
   return (
     <Routes>
       <Route path="/" element={<AppShell />}>
         <Route index element={<HomePage />} />
 
-        <Route path="student">
+        <Route path="student" element={<RoleSectionGate role="student" />}>
           <Route index element={<Navigate to="tasks" replace />} />
           <Route path="tasks" element={<StudentTasksPage />} />
           <Route path="decision" element={<StudentDecisionPage />} />
@@ -34,7 +51,7 @@ export default function App() {
           <Route path="reverse" element={<StudentReversePage />} />
         </Route>
 
-        <Route path="teacher">
+        <Route path="teacher" element={<RoleSectionGate role="teacher" />}>
           <Route index element={<Navigate to="tasks" replace />} />
           <Route path="tasks" element={<TeacherTasksPage />} />
           <Route path="create" element={<TeacherCreatePage />} />
@@ -43,7 +60,7 @@ export default function App() {
           <Route path="demo" element={<TeacherDemoPage />} />
         </Route>
 
-        <Route path="admin">
+        <Route path="admin" element={<RoleSectionGate role="admin" />}>
           <Route index element={<Navigate to="modules" replace />} />
           <Route path="dashboard" element={<AdminDashboardPage />} />
           <Route path="modules" element={<AdminModulesPage />} />

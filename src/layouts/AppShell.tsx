@@ -1,8 +1,9 @@
 import { useEffect, useLayoutEffect, useState } from 'react';
-import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../auth/AuthContext';
 
 type ThemeMode = 'dark' | 'light';
-type AdminIconName = 'dashboard' | 'modules' | 'knowledge' | 'prompt' | 'settings' | 'users' | 'insights' | 'menu' | 'back' | 'theme';
+type AdminIconName = 'dashboard' | 'modules' | 'knowledge' | 'prompt' | 'settings' | 'users' | 'insights' | 'menu' | 'back' | 'theme' | 'logout';
 
 const THEME_STORAGE_KEY = 'geo-teaching-app-theme';
 
@@ -164,11 +165,21 @@ function NavIcon({ name }: { name: AdminIconName }) {
           <path d="M12 4v16" />
         </svg>
       );
+    case 'logout':
+      return (
+        <svg {...props}>
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+          <path d="m16 17 5-5-5-5" />
+          <path d="M21 12H9" />
+        </svg>
+      );
   }
 }
 
 export function AppShell() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const isHomePage = location.pathname === '/';
   const activeSection = location.pathname.split('/')[1] as NavGroup['key'] | '';
   const isAdminSection = activeSection === 'admin';
@@ -197,6 +208,11 @@ export function AppShell() {
 
   const nextThemeLabel = themeMode === 'dark' ? '浅色模式' : '深色模式';
   const nextThemeAriaLabel = themeMode === 'dark' ? '切换到浅色模式' : '切换到深色模式';
+
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+  };
 
   return (
     <div
@@ -260,7 +276,7 @@ export function AppShell() {
                 <span className="nav-link__icon">
                   <NavIcon name="back" />
                 </span>
-                <span className="nav-link__label">返回登录页</span>
+                <span className="nav-link__label">返回首页</span>
               </span>
             </Link>
           </div>
@@ -279,12 +295,21 @@ export function AppShell() {
             </button>
             <div className="topbar__meta topbar__meta--admin">
               <span className="pill pill--admin">运营后台</span>
+              {user && <span className="pill pill--admin">{user.displayName}</span>}
               <button type="button" className="theme-toggle-button" onClick={toggleThemeMode} aria-label={nextThemeAriaLabel} title={nextThemeAriaLabel}>
                 <span className="theme-toggle-button__icon">
                   <NavIcon name="theme" />
                 </span>
                 <span>{nextThemeLabel}</span>
               </button>
+              {user && (
+                <button type="button" className="topbar-action-button" onClick={handleLogout}>
+                  <span className="theme-toggle-button__icon">
+                    <NavIcon name="logout" />
+                  </span>
+                  <span>退出登录</span>
+                </button>
+              )}
             </div>
           </header>
         ) : (
@@ -296,12 +321,21 @@ export function AppShell() {
             <div className="topbar__meta">
               <span className="pill">示例数据</span>
               {!isHomePage && <span className="pill">{location.pathname}</span>}
+              {user && <span className="pill">{user.displayName}</span>}
               <button type="button" className="theme-toggle-button" onClick={toggleThemeMode} aria-label={nextThemeAriaLabel} title={nextThemeAriaLabel}>
                 <span className="theme-toggle-button__icon">
                   <NavIcon name="theme" />
                 </span>
                 <span>{nextThemeLabel}</span>
               </button>
+              {user && (
+                <button type="button" className="topbar-action-button" onClick={handleLogout}>
+                  <span className="theme-toggle-button__icon">
+                    <NavIcon name="logout" />
+                  </span>
+                  <span>退出登录</span>
+                </button>
+              )}
             </div>
           </header>
         )}
