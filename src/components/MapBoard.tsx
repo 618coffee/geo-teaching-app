@@ -1,4 +1,4 @@
-import type { Region } from '../data/mock';
+import type { Region } from '../data/demoData';
 
 interface MapBoardProps {
   regions: Region[];
@@ -14,7 +14,7 @@ export function MapBoard({ regions, selectedId, onSelect, mode = 'realistic' }: 
         <div>
           <div className="eyebrow">{mode === 'realistic' ? '实景地图模拟' : '抽象地图模拟'}</div>
           <h3>点击地图选择工厂位置</h3>
-          <p>已用 mock 热区模拟铁路、公路、河流、城镇中心、高新区等区位要素。</p>
+          <p>已用示意热区模拟铁路、公路、河流、城镇中心、高新区等区位要素。</p>
         </div>
       </div>
       {regions.map((region) => (

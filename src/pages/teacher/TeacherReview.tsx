@@ -1,4 +1,4 @@
-import { submissions } from '../../data/mock';
+import { submissions } from '../../data/demoData';
 
 export function TeacherReviewPage() {
   return (

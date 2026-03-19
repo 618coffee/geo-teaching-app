@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { MapBoard } from '../../components/MapBoard';
-import { factorLabels, factoryProfiles, regions, tasks } from '../../data/mock';
+import { factorLabels, factoryProfiles, regions, tasks } from '../../data/demoData';
 import { useDemoState } from '../../data/useDemoState';
 
 export function StudentDecisionPage() {
@@ -75,7 +75,7 @@ export function StudentDecisionPage() {
           <strong>该产业重点关注：</strong>
           {topFactors.join('、')}
         </div>
-        <p className="hint">当前为 mock 规则引擎：根据工厂类型偏好 × 区域属性自动生成分析结果。</p>
+        <p className="hint">当前为规则引擎演示：根据工厂类型偏好 × 区域属性自动生成分析结果。</p>
         <div className="row-gap">
           <Link className={`button primary ${!canSubmit ? 'button-disabled' : ''}`} aria-disabled={!canSubmit} to={canSubmit ? '/student/report' : '/student/decision'}>提交决策并查看分析</Link>
           <Link className="button" to="/student/reverse">切换到反向推荐</Link>

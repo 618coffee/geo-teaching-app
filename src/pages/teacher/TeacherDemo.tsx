@@ -1,4 +1,4 @@
-import { demoRecords } from '../../data/mock';
+import { demoRecords } from '../../data/demoData';
 
 export function TeacherDemoPage() {
   return (

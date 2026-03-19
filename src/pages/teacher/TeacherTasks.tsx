@@ -1,4 +1,4 @@
-import { tasks } from '../../data/mock';
+import { tasks } from '../../data/demoData';
 
 export function TeacherTasksPage() {
   return (

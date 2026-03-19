@@ -1,5 +1,5 @@
 import { Chart } from '../../components/Chart';
-import { teachingStats } from '../../data/mock';
+import { teachingStats } from '../../data/demoData';
 
 export function TeacherAnalysisPage() {
   const option = {

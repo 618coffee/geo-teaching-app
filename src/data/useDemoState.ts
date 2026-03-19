@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getAnalysis } from './mock';
+import { getAnalysis } from './demoData';
 
 const STORAGE_KEY = 'geo-teaching-demo-state';
 

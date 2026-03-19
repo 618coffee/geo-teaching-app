@@ -11,7 +11,11 @@ import { TeacherCreatePage } from './pages/teacher/TeacherCreate';
 import { TeacherReviewPage } from './pages/teacher/TeacherReview';
 import { TeacherAnalysisPage } from './pages/teacher/TeacherAnalysis';
 import { TeacherDemoPage } from './pages/teacher/TeacherDemo';
+import { AdminDashboardPage } from './pages/admin/AdminDashboard';
+import { AdminInsightsPage } from './pages/admin/AdminInsights';
+import { AdminKnowledgePage } from './pages/admin/AdminKnowledge';
 import { AdminModulesPage } from './pages/admin/AdminModules';
+import { AdminSettingsPage } from './pages/admin/AdminSettings';
 import { AdminUsersPage } from './pages/admin/AdminUsers';
 import { AdminPromptsPage } from './pages/admin/AdminPrompts';
 
@@ -41,9 +45,13 @@ export default function App() {
 
         <Route path="admin">
           <Route index element={<Navigate to="modules" replace />} />
+          <Route path="dashboard" element={<AdminDashboardPage />} />
           <Route path="modules" element={<AdminModulesPage />} />
+          <Route path="knowledge" element={<AdminKnowledgePage />} />
+          <Route path="settings" element={<AdminSettingsPage />} />
           <Route path="users" element={<AdminUsersPage />} />
           <Route path="prompts" element={<AdminPromptsPage />} />
+          <Route path="insights" element={<AdminInsightsPage />} />
         </Route>
       </Route>
     </Routes>
