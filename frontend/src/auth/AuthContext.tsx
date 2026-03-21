@@ -63,6 +63,7 @@ interface AuthContextValue {
   loginWithCode: (input: LoginWithCodeInput) => AuthUser;
   loginAsMockRole: (role: UserRole) => AuthUser;
   resetPassword: (input: ResetPasswordInput) => void;
+  updateProfile: (input: { displayName: string }) => void;
   logout: () => void;
   detectChannel: (value: string) => AuthChannel | null;
 }
@@ -402,6 +403,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     writeUsers(updatedUsers);
   };
 
+  const updateProfile = (input: { displayName: string }) => {
+    if (!user) return;
+    const users = readUsers();
+    const updatedUsers = users.map((u) =>
+      u.account === user.account ? { ...u, displayName: input.displayName.trim() } : u,
+    );
+    writeUsers(updatedUsers);
+    const updatedUser = { ...user, displayName: input.displayName.trim() };
+    writeSessionUser(updatedUser);
+    setUser(updatedUser);
+  };
+
   const logout = () => {
     removeStoredValue(SESSION_STORAGE_KEY);
     setUser(null);
@@ -419,6 +432,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loginWithCode,
         loginAsMockRole,
         resetPassword,
+        updateProfile,
         logout,
         detectChannel: detectAuthChannel,
       }}

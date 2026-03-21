@@ -1,6 +1,8 @@
+import { useNavigate } from 'react-router-dom';
 import { tasks } from '../../data/demoData';
 
 export function TeacherTasksPage() {
+  const navigate = useNavigate();
   return (
     <div className="card">
       <div className="row-between">
@@ -8,7 +10,7 @@ export function TeacherTasksPage() {
           <div className="eyebrow">教师端 · 任务管理</div>
           <h3>当前教学任务</h3>
         </div>
-        <button className="button primary">新建任务</button>
+        <button className="button primary" onClick={() => navigate('/teacher/create')}>新建任务</button>
       </div>
       <table className="table">
         <thead>

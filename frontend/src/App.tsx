@@ -12,6 +12,13 @@ import { TeacherCreatePage } from './pages/teacher/TeacherCreate';
 import { TeacherReviewPage } from './pages/teacher/TeacherReview';
 import { TeacherAnalysisPage } from './pages/teacher/TeacherAnalysis';
 import { TeacherDemoPage } from './pages/teacher/TeacherDemo';
+import { TeacherSchoolsPage } from './pages/teacher/TeacherSchools';
+import { TeacherClassesPage } from './pages/teacher/TeacherClasses';
+import { TeacherStudentsPage } from './pages/teacher/TeacherStudents';
+import { TeacherCasesPage } from './pages/teacher/TeacherCases';
+import { TeacherKnowledgePage } from './pages/teacher/TeacherKnowledge';
+import { TeacherDemosPage } from './pages/teacher/TeacherDemos';
+import { TeacherProfilePage } from './pages/teacher/TeacherProfile';
 import { AdminDashboardPage } from './pages/admin/AdminDashboard';
 import { AdminInsightsPage } from './pages/admin/AdminInsights';
 import { AdminKnowledgePage } from './pages/admin/AdminKnowledge';
@@ -58,6 +65,13 @@ export default function App() {
           <Route path="review" element={<TeacherReviewPage />} />
           <Route path="analysis" element={<TeacherAnalysisPage />} />
           <Route path="demo" element={<TeacherDemoPage />} />
+          <Route path="schools" element={<TeacherSchoolsPage />} />
+          <Route path="classes" element={<TeacherClassesPage />} />
+          <Route path="students" element={<TeacherStudentsPage />} />
+          <Route path="cases" element={<TeacherCasesPage />} />
+          <Route path="knowledge" element={<TeacherKnowledgePage />} />
+          <Route path="demos" element={<TeacherDemosPage />} />
+          <Route path="profile" element={<TeacherProfilePage />} />
         </Route>
 
         <Route path="admin" element={<RoleSectionGate role="admin" />}>
