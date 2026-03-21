@@ -315,11 +315,9 @@ export function AppShell() {
         ) : (
           <header className="topbar">
             <div>
-              <div className="eyebrow">当前验证场景</div>
-              <h1>高中地理「工业区位选择」</h1>
+              <h1>高中人文地理教学系统</h1>
             </div>
             <div className="topbar__meta">
-              <span className="pill">示例数据</span>
               {!isHomePage && <span className="pill">{location.pathname}</span>}
               {user && <span className="pill">{user.displayName}</span>}
               <button type="button" className="theme-toggle-button" onClick={toggleThemeMode} aria-label={nextThemeAriaLabel} title={nextThemeAriaLabel}>

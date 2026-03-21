@@ -43,6 +43,9 @@ const roleLabels: Record<UserRole, string> = {
   admin: '运营端',
 };
 
+// 运营端暂未对外开放，隐藏入口但保留代码
+const visibleRoleCards = roleCards.filter((c) => c.role !== 'admin');
+
 function inferRoleFromPath(pathname: string | null): UserRole | null {
   if (!pathname) {
     return null;
@@ -68,7 +71,10 @@ export function HomePage() {
   const [searchParams] = useSearchParams();
   const { user, loginAsMockRole } = useAuth();
   const redirectPath = searchParams.get('redirect');
-  const [selectedRole, setSelectedRole] = useState<UserRole>(inferRoleFromPath(redirectPath) ?? 'student');
+  const inferredRole = inferRoleFromPath(redirectPath);
+  const [selectedRole, setSelectedRole] = useState<UserRole>(
+    inferredRole === 'admin' ? 'student' : (inferredRole ?? 'student'),
+  );
 
   useEffect(() => {
     const nextRole = inferRoleFromPath(redirectPath);
@@ -106,28 +112,19 @@ export function HomePage() {
 
       {!user && (
         <>
-          <section className="home-entry-strip">
-            <div>
-              <div className="eyebrow">入口选择</div>
-              <h2>先选择要进入的工作台</h2>
-            </div>
-            <p className="home-entry-strip__text">
-              注册会按照当前所选身份创建账号；登录会根据账号本身的真实身份进入对应工作台。
-            </p>
-          </section>
-
           <section className="home-role-selector" aria-label="选择工作台身份">
-            {roleCards.map((card) => (
+            {visibleRoleCards.map((card) => (
               <button
                 key={card.role}
                 type="button"
-                className={`home-role-option ${selectedRole === card.role ? 'active' : ''}`}
+                className={`home-role-option home-role-option--${card.role} ${selectedRole === card.role ? 'active' : ''}`}
                 onClick={() => setSelectedRole(card.role)}
                 aria-pressed={selectedRole === card.role}
               >
                 <span className="home-role-option__eyebrow">{card.eyebrow}</span>
                 <strong>{card.title}</strong>
                 <span>{card.description}</span>
+                <span className="home-role-option__badge" aria-hidden="true">✓ 已选择</span>
               </button>
             ))}
           </section>
@@ -155,7 +152,7 @@ export function HomePage() {
 
       {user && (
         <section className="grid-3 home-role-grid">
-          {roleCards.map((card) => (
+          {visibleRoleCards.map((card) => (
             <article key={card.role} className={`card ${card.className}`}>
               <div className="home-role-card__content">
                 <div className="eyebrow">{card.eyebrow}</div>

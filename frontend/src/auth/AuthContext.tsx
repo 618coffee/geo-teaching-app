@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, type ReactNode } from 'react';
 
 export type UserRole = 'student' | 'teacher' | 'admin';
-export type AuthChannel = 'phone' | 'email';
+export type AuthChannel = 'phone' | 'email' | 'student_id';
 
 export interface AuthUser {
   id: string;
@@ -41,6 +41,12 @@ interface LoginWithCodeInput {
   code: string;
 }
 
+interface ResetPasswordInput {
+  account: string;
+  code: string;
+  newPassword: string;
+}
+
 interface SendVerificationCodeResult {
   channel: AuthChannel;
   code: string;
@@ -56,6 +62,7 @@ interface AuthContextValue {
   loginWithPassword: (input: LoginWithPasswordInput) => AuthUser;
   loginWithCode: (input: LoginWithCodeInput) => AuthUser;
   loginAsMockRole: (role: UserRole) => AuthUser;
+  resetPassword: (input: ResetPasswordInput) => void;
   logout: () => void;
   detectChannel: (value: string) => AuthChannel | null;
 }
@@ -85,8 +92,8 @@ const MOCK_AUTH_PASSWORD = 'demo123456';
 const MOCK_USERS: StoredAuthUser[] = [
   {
     id: 'mock-student',
-    account: 'student@demo.local',
-    channel: 'email',
+    account: 'S2024001',
+    channel: 'student_id',
     role: 'student',
     displayName: '演示学生',
     password: MOCK_AUTH_PASSWORD,
@@ -376,6 +383,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return safeUser;
   };
 
+  const resetPassword = (input: ResetPasswordInput) => {
+    const normalizedAccount = normalizeAccount(input.account);
+    const users = readUsers();
+    const userIndex = users.findIndex((item) => item.account === normalizedAccount);
+
+    if (userIndex === -1) {
+      throw new Error('账号不存在，请确认手机号或邮箱是否正确。');
+    }
+
+    verifyCode(normalizedAccount, input.code);
+
+    if (input.newPassword.trim().length < 8) {
+      throw new Error('新密码至少需要 8 位。');
+    }
+
+    const updatedUsers = users.map((u, i) => (i === userIndex ? { ...u, password: input.newPassword } : u));
+    writeUsers(updatedUsers);
+  };
+
   const logout = () => {
     removeStoredValue(SESSION_STORAGE_KEY);
     setUser(null);
@@ -392,6 +418,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loginWithPassword,
         loginWithCode,
         loginAsMockRole,
+        resetPassword,
         logout,
         detectChannel: detectAuthChannel,
       }}
