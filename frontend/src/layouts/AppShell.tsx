@@ -35,13 +35,10 @@ interface NavGroup {
 const navGroups: NavGroup[] = [
   {
     key: 'student',
-    title: '学生端',
+    title: '导航菜单',
     items: [
-      { label: '任务列表', to: '/student/tasks' },
-      { label: '区位决策', to: '/student/decision' },
-      { label: '分析报告', to: '/student/report' },
-      { label: '对比报告', to: '/student/compare' },
-      { label: '反向推荐', to: '/student/reverse' },
+      { label: '任务列表', to: '/student/tasks', icon: 'task-list' },
+      { label: '个人中心', to: '/student/profile', icon: 'person' },
     ],
   },
   {
@@ -253,8 +250,10 @@ export function AppShell() {
   const activeSection = location.pathname.split('/')[1] as NavGroup['key'] | '';
   const isAdminSection = activeSection === 'admin';
   const isTeacherSection = activeSection === 'teacher';
+  const isStudentSection = activeSection === 'student';
   const visibleNavGroups = navGroups.filter((group) => group.key === activeSection);
   const [isAdminSidebarCollapsed, setIsAdminSidebarCollapsed] = useState(false);
+  const [isRoleSidebarCollapsed, setIsRoleSidebarCollapsed] = useState(false);
   const [themeMode, setThemeMode] = useState<ThemeMode>(getInitialTheme);
 
   useLayoutEffect(() => {
@@ -268,9 +267,21 @@ export function AppShell() {
     }
   }, [isAdminSection]);
 
+  useEffect(() => {
+    setIsRoleSidebarCollapsed(false);
+  }, [activeSection]);
+
   const toggleAdminSidebar = () => {
     setIsAdminSidebarCollapsed((current) => !current);
   };
+
+  const toggleRoleSidebar = () => {
+    setIsRoleSidebarCollapsed((current) => !current);
+  };
+
+  const isSidebarActuallyCollapsed =
+    (isAdminSection && isAdminSidebarCollapsed) ||
+    ((isTeacherSection || isStudentSection) && isRoleSidebarCollapsed);
 
   const toggleThemeMode = () => {
     setThemeMode((current) => (current === 'dark' ? 'light' : 'dark'));
@@ -289,12 +300,12 @@ export function AppShell() {
       className={[
         'app-shell',
         isHomePage ? 'app-shell--home' : '',
-        isAdminSection ? 'app-shell--admin' : '',
-        isAdminSection && isAdminSidebarCollapsed ? 'app-shell--admin-collapsed' : '',
+        (isAdminSection || isTeacherSection || isStudentSection) ? 'app-shell--admin' : '',
+        isSidebarActuallyCollapsed ? 'app-shell--admin-collapsed' : '',
       ].filter(Boolean).join(' ')}
     >
       {!isHomePage && (
-        <aside className={['sidebar', (isAdminSection || isTeacherSection) ? 'sidebar--admin' : '', isAdminSidebarCollapsed ? 'sidebar--collapsed' : ''].filter(Boolean).join(' ')}>
+        <aside className={['sidebar', (isAdminSection || isTeacherSection || isStudentSection) ? 'sidebar--admin' : '', isSidebarActuallyCollapsed ? 'sidebar--collapsed' : ''].filter(Boolean).join(' ')}>
           {isAdminSection ? (
             <>
               <Link to="/admin/modules" className="brand brand--admin">
@@ -314,11 +325,6 @@ export function AppShell() {
                 <NavIcon name="menu" />
               </button>
             </>
-          ) : isTeacherSection ? (
-            <div className="brand brand--system">
-              <span className="brand__badge">Geo</span>
-              <strong className="brand__system-title">高中人文地理教学系统</strong>
-            </div>
           ) : (
             <div className="brand brand--system">
               <span className="brand__badge">Geo</span>
@@ -326,7 +332,7 @@ export function AppShell() {
             </div>
           )}
           {visibleNavGroups.map((group) => (
-            <section key={group.key} className={['nav-group', (isAdminSection || isTeacherSection) ? 'nav-group--admin' : ''].filter(Boolean).join(' ')}>
+            <section key={group.key} className={['nav-group', (isAdminSection || isTeacherSection || isStudentSection) ? 'nav-group--admin' : ''].filter(Boolean).join(' ')}>
               <h4>{group.title}</h4>
               {group.items.map((item) => (
                 <NavLink key={item.to} to={item.to} className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
@@ -344,7 +350,7 @@ export function AppShell() {
           ))}
           <div className="sidebar__footer">
             {user && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '4px 8px 10px' }}>
+              <div className="sidebar__footer-user" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '4px 8px 10px' }}>
                 <span style={{
                   width: '32px', height: '32px', borderRadius: '50%',
                   background: 'var(--primary-soft)', border: '1px solid var(--border-strong)',
@@ -353,7 +359,7 @@ export function AppShell() {
                 }}>
                   {user.displayName.slice(0, 1)}
                 </span>
-                <div style={{ overflow: 'hidden' }}>
+                <div className="sidebar__user-text" style={{ overflow: 'hidden' }}>
                   <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-strong)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {user.displayName}
                   </div>
@@ -376,7 +382,7 @@ export function AppShell() {
           </div>
         </aside>
       )}
-      <main className={['content', isHomePage ? 'content--home' : '', (isAdminSection || isTeacherSection) ? 'content--admin' : ''].filter(Boolean).join(' ')}>
+      <main className={['content', isHomePage ? 'content--home' : '', (isAdminSection || isTeacherSection || isStudentSection) ? 'content--admin' : ''].filter(Boolean).join(' ')}>
         {isAdminSection ? (
           <header className="topbar topbar--admin">
             <button
@@ -398,8 +404,19 @@ export function AppShell() {
               </button>
             </div>
           </header>
-        ) : isTeacherSection ? (
+        ) : (isTeacherSection || isStudentSection) ? (
           <header className="topbar topbar--admin">
+            <button
+              type="button"
+              className="admin-toolbar-button"
+              onClick={toggleRoleSidebar}
+              aria-label={isRoleSidebarCollapsed ? '展开侧边栏' : '收起侧边栏'}
+            >
+              <NavIcon name="menu" />
+            </button>
+            <span className="topbar__section-label">
+              {isTeacherSection ? '教师端' : '学生端'}
+            </span>
             <div className="topbar__meta topbar__meta--admin">
               <button type="button" className="theme-toggle-button" onClick={toggleThemeMode} aria-label={nextThemeAriaLabel} title={nextThemeAriaLabel}>
                 <span className="theme-toggle-button__icon">
