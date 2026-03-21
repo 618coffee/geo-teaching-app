@@ -44,7 +44,7 @@ jobs:
         with:
           host: ${{ secrets.ECS_HOST }}
           username: root
-          key: ${{ secrets.ECS_SSH_KEY }}
+          password: ${{ secrets.ECS_PASSWORD }}
           source: frontend/dist.tar.gz
           target: /tmp/
           strip_components: 1
@@ -54,7 +54,7 @@ jobs:
         with:
           host: ${{ secrets.ECS_HOST }}
           username: root
-          key: ${{ secrets.ECS_SSH_KEY }}
+          password: ${{ secrets.ECS_PASSWORD }}
           script: |
             set -e
             echo ">>> 解压前端文件..."
