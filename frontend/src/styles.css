@@ -296,6 +296,18 @@ button:disabled {
   margin-bottom: 22px;
 }
 
+.brand--system {
+  align-items: center;
+  gap: 12px;
+}
+
+.brand__system-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-strong);
+  line-height: 1.3;
+}
+
 .brand--admin {
   align-items: center;
   padding: 22px 18px 18px;
@@ -477,8 +489,13 @@ small,
   border-top-color: var(--admin-border);
 }
 
-.sidebar-return-link {
+.sidebar-logout-button {
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
   margin-bottom: 0;
+  cursor: pointer;
 }
 
 .sidebar__footer .nav-link__content {
@@ -492,6 +509,32 @@ small,
 .content--home {
   width: min(1180px, 100%);
   margin: 0 auto;
+}
+
+.home-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100dvh - 80px);
+}
+
+.home-login-wrap {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 28px;
+  width: min(900px, 100%);
+  align-items: start;
+}
+
+/* Role selector fills the left column and stacks cards vertically */
+.home-login-wrap .home-role-selector {
+  grid-template-columns: 1fr;
+  height: 100%;
+}
+
+.home-login-wrap .home-role-option {
+  flex: 1;
 }
 
 .content--admin {
@@ -619,8 +662,9 @@ small,
 
 .home-role-selector {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
+  width: 100%;
 }
 
 .home-role-option {
@@ -1000,6 +1044,36 @@ small,
   background: var(--danger-soft);
   border-color: var(--danger-border);
   color: var(--danger-text);
+}
+
+/* ── Dev quick-login ─────────────────────────────────────── */
+
+.dev-quick-login {
+  border-top: 1px dashed var(--border);
+  padding-top: 12px;
+}
+
+.dev-quick-login summary {
+  font-size: 12px;
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+}
+
+.dev-quick-login summary::before {
+  content: '▸ ';
+}
+
+.dev-quick-login[open] summary::before {
+  content: '▾ ';
+}
+
+.dev-quick-login__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  flex-wrap: wrap;
 }
 
 .auth-session-card__meta {
@@ -1900,6 +1974,15 @@ p {
 
   .content--admin {
     padding: 0;
+  }
+
+  .home-login-wrap {
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+
+  .home-login-wrap .home-role-selector {
+    grid-template-columns: 1fr 1fr;
   }
 
   .topbar,

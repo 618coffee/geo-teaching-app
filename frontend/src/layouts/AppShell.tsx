@@ -245,12 +245,9 @@ export function AppShell() {
               </button>
             </>
           ) : (
-            <div className="brand">
+            <div className="brand brand--system">
               <span className="brand__badge">Geo</span>
-              <div>
-                <strong>工业区位选择教学应用</strong>
-                <p>学生端 / 教师端 / 运营端 · 演示版本</p>
-              </div>
+              <strong className="brand__system-title">高中人文地理教学系统</strong>
             </div>
           )}
           {visibleNavGroups.map((group) => (
@@ -271,14 +268,16 @@ export function AppShell() {
             </section>
           ))}
           <div className="sidebar__footer">
-            <Link to="/" className="nav-link sidebar-return-link">
-              <span className="nav-link__content">
-                <span className="nav-link__icon">
-                  <NavIcon name="back" />
+            {user && (
+              <button type="button" className="nav-link sidebar-logout-button" onClick={handleLogout}>
+                <span className="nav-link__content">
+                  <span className="nav-link__icon">
+                    <NavIcon name="logout" />
+                  </span>
+                  <span className="nav-link__label">退出登录</span>
                 </span>
-                <span className="nav-link__label">返回首页</span>
-              </span>
-            </Link>
+              </button>
+            )}
           </div>
         </aside>
       )}
@@ -302,21 +301,10 @@ export function AppShell() {
                 </span>
                 <span>{nextThemeLabel}</span>
               </button>
-              {user && (
-                <button type="button" className="topbar-action-button" onClick={handleLogout}>
-                  <span className="theme-toggle-button__icon">
-                    <NavIcon name="logout" />
-                  </span>
-                  <span>退出登录</span>
-                </button>
-              )}
             </div>
           </header>
         ) : (
           <header className="topbar">
-            <div>
-              <h1>高中人文地理教学系统</h1>
-            </div>
             <div className="topbar__meta">
               {!isHomePage && <span className="pill">{location.pathname}</span>}
               {user && <span className="pill">{user.displayName}</span>}
@@ -326,14 +314,6 @@ export function AppShell() {
                 </span>
                 <span>{nextThemeLabel}</span>
               </button>
-              {user && (
-                <button type="button" className="topbar-action-button" onClick={handleLogout}>
-                  <span className="theme-toggle-button__icon">
-                    <NavIcon name="logout" />
-                  </span>
-                  <span>退出登录</span>
-                </button>
-              )}
             </div>
           </header>
         )}

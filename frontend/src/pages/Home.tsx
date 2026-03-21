@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { canRoleAccessPath, getDefaultRouteForRole, useAuth, type AuthUser, type UserRole } from '../auth/AuthContext';
 import { AuthPanel } from '../components/AuthPanel';
 
@@ -83,6 +83,12 @@ export function HomePage() {
     }
   }, [redirectPath, user]);
 
+  useEffect(() => {
+    if (user) {
+      navigate(getDefaultRouteForRole(user.role), { replace: true });
+    }
+  }, [user, navigate]);
+
   const handleAuthSuccess = (nextUser: AuthUser) => {
     if (redirectPath && canRoleAccessPath(redirectPath, nextUser.role)) {
       navigate(redirectPath, { replace: true });
@@ -103,7 +109,7 @@ export function HomePage() {
   };
 
   return (
-    <div className="stack-lg">
+    <div className="home-page">
       {redirectPath && !user && (
         <section className="callout soft">
           你刚才访问的是 <strong>{redirectPath}</strong>，请先完成登录或注册，系统会在认证成功后自动跳转回对应页面。
@@ -111,7 +117,7 @@ export function HomePage() {
       )}
 
       {!user && (
-        <>
+        <div className="home-login-wrap">
           <section className="home-role-selector" aria-label="选择工作台身份">
             {visibleRoleCards.map((card) => (
               <button
@@ -134,41 +140,7 @@ export function HomePage() {
             preferredRole={selectedRole}
             preferredRoleLabel={roleLabels[selectedRole]}
           />
-        </>
-      )}
-
-      {user && (
-        <section className="card home-session-card">
-          <div className="home-session-card__meta">
-            <div className="eyebrow">当前会话</div>
-            <h3>已登录为 {user.displayName}</h3>
-            <p>
-              当前账号归属 <strong>{roleLabels[user.role]}</strong>，可以直接进入对应工作台；其他角色入口会保持受限。
-            </p>
-          </div>
-          <Link className="button primary" to={getDefaultRouteForRole(user.role)}>进入我的工作台</Link>
-        </section>
-      )}
-
-      {user && (
-        <section className="grid-3 home-role-grid">
-          {visibleRoleCards.map((card) => (
-            <article key={card.role} className={`card ${card.className}`}>
-              <div className="home-role-card__content">
-                <div className="eyebrow">{card.eyebrow}</div>
-                <h3>{card.title}</h3>
-                <p>{card.description}</p>
-              </div>
-              {user.role === card.role ? (
-                <Link className="button home-role-card__button" to={card.to}>进入{card.title}</Link>
-              ) : (
-                <button type="button" className="button home-role-card__button" onClick={() => handleEnterMockRole(card.role)}>
-                  使用{card.title}演示账号
-                </button>
-              )}
-            </article>
-          ))}
-        </section>
+        </div>
       )}
     </div>
   );

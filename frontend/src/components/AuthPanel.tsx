@@ -372,7 +372,7 @@ export function AuthPanel({ onSuccess, preferredRole, preferredRoleLabel }: Auth
                 type="password"
                 value={loginPasswordForm.password}
                 onChange={(event) => setLoginPasswordForm((current) => ({ ...current, password: event.target.value }))}
-                placeholder="请输入初始密码"
+                placeholder="请输入密码"
                 autoComplete="current-password"
               />
             </label>
@@ -468,7 +468,7 @@ export function AuthPanel({ onSuccess, preferredRole, preferredRoleLabel }: Auth
             <input
               value={registerForm.displayName}
               onChange={(event) => setRegisterForm((current) => ({ ...current, displayName: event.target.value }))}
-              placeholder="例如：高一（3）班 王同学"
+              placeholder="例如：张老师 / 张三"
               autoComplete="name"
             />
           </label>
@@ -531,6 +531,17 @@ export function AuthPanel({ onSuccess, preferredRole, preferredRoleLabel }: Auth
           {feedback.message}
         </div>
       )}
+
+      <details className="dev-quick-login">
+        <summary>开发快捷入口</summary>
+        <div className="dev-quick-login__actions">
+          {(Object.keys(roleLabels) as UserRole[]).map((role) => (
+            <button key={role} type="button" className="button" onClick={() => enterMockRole(role)}>
+              {roleLabels[role]}
+            </button>
+          ))}
+        </div>
+      </details>
     </section>
   );
 }
