@@ -7,6 +7,7 @@ import { StudentDecisionPage } from './pages/student/StudentDecision';
 import { StudentReportPage } from './pages/student/StudentReport';
 import { StudentComparePage } from './pages/student/StudentCompare';
 import { StudentReversePage } from './pages/student/StudentReverse';
+import { StudentProfilePage } from './pages/student/StudentProfile';
 import { TeacherTasksPage } from './pages/teacher/TeacherTasks';
 import { TeacherCreatePage } from './pages/teacher/TeacherCreate';
 import { TeacherReviewPage } from './pages/teacher/TeacherReview';
@@ -56,6 +57,7 @@ export default function App() {
           <Route path="report" element={<StudentReportPage />} />
           <Route path="compare" element={<StudentComparePage />} />
           <Route path="reverse" element={<StudentReversePage />} />
+          <Route path="profile" element={<StudentProfilePage />} />
         </Route>
 
         <Route path="teacher" element={<RoleSectionGate role="teacher" />}>

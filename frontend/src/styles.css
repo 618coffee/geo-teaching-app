@@ -259,6 +259,7 @@ button:disabled {
 .app-shell--admin {
   grid-template-columns: 248px minmax(0, 1fr);
   background: var(--admin-bg);
+  transition: grid-template-columns 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .app-shell--admin.app-shell--admin-collapsed {
@@ -460,10 +461,52 @@ small,
   height: 16px;
 }
 
+/* Base transitions for animated sidebar elements */
+.sidebar--admin .nav-link__label,
+.sidebar--admin .brand__copy,
+.sidebar--admin .brand__system-title,
+.sidebar--admin .sidebar__user-text {
+  overflow: hidden;
+  white-space: nowrap;
+  max-width: 200px;
+  transition: opacity 0.18s ease, max-width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar--admin .nav-group--admin h4 {
+  overflow: hidden;
+  max-height: 36px;
+  transition: opacity 0.18s ease, max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1), margin-bottom 0.3s ease;
+}
+
+.sidebar--admin .nav-link__content {
+  transition: gap 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar--admin .brand--system {
+  transition: gap 0.3s cubic-bezier(0.4, 0, 0.2, 1), padding-inline 0.3s ease;
+}
+
+.sidebar--admin .brand--admin {
+  transition: padding-inline 0.3s ease;
+}
+
+.sidebar--admin .sidebar__footer-user {
+  transition: gap 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Collapsed states */
 .sidebar--collapsed .brand__copy,
 .sidebar--collapsed .nav-link__label,
+.sidebar--collapsed .brand__system-title,
+.sidebar--collapsed .sidebar__user-text {
+  opacity: 0;
+  max-width: 0;
+}
+
 .sidebar--collapsed .nav-group--admin h4 {
-  display: none;
+  opacity: 0;
+  max-height: 0;
+  margin-bottom: 0;
 }
 
 .sidebar--collapsed .brand--admin {
@@ -471,8 +514,21 @@ small,
   padding-inline: 10px;
 }
 
+.sidebar--collapsed .brand--system {
+  justify-content: center;
+  gap: 0;
+  padding-inline: 10px;
+}
+
+.sidebar--collapsed .sidebar__footer-user {
+  justify-content: center;
+  gap: 0;
+  padding: 4px 8px 10px;
+}
+
 .sidebar--collapsed .nav-link__content {
   justify-content: center;
+  gap: 0;
   width: 100%;
 }
 
@@ -579,6 +635,15 @@ small,
 
 .topbar__meta--admin {
   margin-left: auto;
+}
+
+.topbar__section-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+  margin-left: 4px;
+  white-space: nowrap;
 }
 
 .pill,
