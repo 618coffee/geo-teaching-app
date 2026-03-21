@@ -68,6 +68,15 @@
   --role-accent-student: rgba(138, 180, 248, 0.72);
   --role-accent-teacher: rgba(96, 215, 159, 0.58);
   --role-accent-admin: rgba(255, 190, 92, 0.5);
+  --role-border-student: rgba(138, 180, 248, 0.85);
+  --role-border-teacher: rgba(96, 215, 159, 0.75);
+  --role-bg-student: rgba(138, 180, 248, 0.13);
+  --role-bg-teacher: rgba(96, 215, 159, 0.11);
+  --role-glow-student: rgba(138, 180, 248, 0.15);
+  --role-glow-teacher: rgba(96, 215, 159, 0.13);
+  --role-badge-student: #8ab4f8;
+  --role-badge-teacher: #60d79f;
+  --role-badge-text: #0b1220;
   --table-row-hover: rgba(138, 180, 248, 0.08);
   --track-bg: #394d72;
   --switch-knob-bg: #f8fbff;
@@ -160,6 +169,15 @@
   --role-accent-student: rgba(26, 115, 232, 0.2);
   --role-accent-teacher: rgba(52, 168, 83, 0.16);
   --role-accent-admin: rgba(251, 188, 4, 0.18);
+  --role-border-student: rgba(26, 115, 232, 0.65);
+  --role-border-teacher: rgba(52, 168, 83, 0.6);
+  --role-bg-student: rgba(26, 115, 232, 0.08);
+  --role-bg-teacher: rgba(52, 168, 83, 0.08);
+  --role-glow-student: rgba(26, 115, 232, 0.1);
+  --role-glow-teacher: rgba(52, 168, 83, 0.09);
+  --role-badge-student: #1a73e8;
+  --role-badge-teacher: #34a853;
+  --role-badge-text: #ffffff;
   --table-row-hover: rgba(26, 115, 232, 0.06);
   --track-bg: #d7e3f8;
   --switch-knob-bg: #ffffff;
@@ -276,6 +294,18 @@ button:disabled {
   background: var(--brand-surface);
   border: 1px solid var(--brand-border);
   margin-bottom: 22px;
+}
+
+.brand--system {
+  align-items: center;
+  gap: 12px;
+}
+
+.brand__system-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-strong);
+  line-height: 1.3;
 }
 
 .brand--admin {
@@ -459,8 +489,13 @@ small,
   border-top-color: var(--admin-border);
 }
 
-.sidebar-return-link {
+.sidebar-logout-button {
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
   margin-bottom: 0;
+  cursor: pointer;
 }
 
 .sidebar__footer .nav-link__content {
@@ -474,6 +509,32 @@ small,
 .content--home {
   width: min(1180px, 100%);
   margin: 0 auto;
+}
+
+.home-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100dvh - 80px);
+}
+
+.home-login-wrap {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 28px;
+  width: min(900px, 100%);
+  align-items: start;
+}
+
+/* Role selector fills the left column and stacks cards vertically */
+.home-login-wrap .home-role-selector {
+  grid-template-columns: 1fr;
+  height: 100%;
+}
+
+.home-login-wrap .home-role-option {
+  flex: 1;
 }
 
 .content--admin {
@@ -601,8 +662,9 @@ small,
 
 .home-role-selector {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
+  width: 100%;
 }
 
 .home-role-option {
@@ -612,30 +674,87 @@ small,
   gap: 10px;
   padding: 18px 20px;
   text-align: left;
-  border: 1px solid var(--border);
+  border: 1.5px solid var(--border);
   border-radius: 22px;
   background: var(--surface-muted);
   color: var(--text);
   box-shadow: var(--shadow-control);
-  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease, background 160ms ease;
+  position: relative;
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease, background 180ms ease;
 }
 
 .home-role-option strong,
-.home-role-option span {
+.home-role-option span:not(.home-role-option__badge) {
   display: block;
 }
 
-.home-role-option span:last-child {
+.home-role-option span:not(.home-role-option__badge):last-of-type {
   color: var(--muted);
 }
 
-.home-role-option.active,
-.home-role-option:hover,
-.home-role-option:focus-visible {
+.home-role-option:hover:not(.active),
+.home-role-option:focus-visible:not(.active) {
   transform: translateY(-1px);
   border-color: var(--border-strong);
-  background: color-mix(in srgb, var(--primary-soft) 78%, var(--surface-muted));
+  background: var(--surface-elevated);
   box-shadow: var(--shadow-soft);
+}
+
+/* ── Active / selected state ─────────────────────────────── */
+
+.home-role-option.active {
+  transform: translateY(-2px);
+  border-width: 2px;
+}
+
+.home-role-option--student.active {
+  border-color: var(--role-border-student);
+  background: var(--role-bg-student);
+  box-shadow: 0 0 0 4px var(--role-glow-student), var(--shadow-soft);
+}
+
+.home-role-option--teacher.active {
+  border-color: var(--role-border-teacher);
+  background: var(--role-bg-teacher);
+  box-shadow: 0 0 0 4px var(--role-glow-teacher), var(--shadow-soft);
+}
+
+.home-role-option--student.active strong {
+  color: var(--role-badge-student);
+}
+
+.home-role-option--teacher.active strong {
+  color: var(--role-badge-teacher);
+}
+
+/* ── Selected badge ──────────────────────────────────────── */
+
+.home-role-option__badge {
+  display: none;
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 3px 9px;
+  border-radius: 20px;
+  line-height: 1.5;
+  pointer-events: none;
+}
+
+.home-role-option.active .home-role-option__badge {
+  display: block;
+}
+
+.home-role-option--student.active .home-role-option__badge {
+  background: var(--role-badge-student);
+  color: var(--role-badge-text);
+}
+
+.home-role-option--teacher.active .home-role-option__badge {
+  background: var(--role-badge-teacher);
+  color: var(--role-badge-text);
 }
 
 .home-role-option__eyebrow {
@@ -925,6 +1044,36 @@ small,
   background: var(--danger-soft);
   border-color: var(--danger-border);
   color: var(--danger-text);
+}
+
+/* ── Dev quick-login ─────────────────────────────────────── */
+
+.dev-quick-login {
+  border-top: 1px dashed var(--border);
+  padding-top: 12px;
+}
+
+.dev-quick-login summary {
+  font-size: 12px;
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+}
+
+.dev-quick-login summary::before {
+  content: '▸ ';
+}
+
+.dev-quick-login[open] summary::before {
+  content: '▾ ';
+}
+
+.dev-quick-login__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  flex-wrap: wrap;
 }
 
 .auth-session-card__meta {
@@ -1825,6 +1974,15 @@ p {
 
   .content--admin {
     padding: 0;
+  }
+
+  .home-login-wrap {
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+
+  .home-login-wrap .home-role-selector {
+    grid-template-columns: 1fr 1fr;
   }
 
   .topbar,
