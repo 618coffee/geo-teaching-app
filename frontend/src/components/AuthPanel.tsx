@@ -1,8 +1,7 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { useAuth, type AuthUser, type UserRole } from '../auth/AuthContext';
 
 type AuthMode = 'login' | 'register' | 'forgot';
-type LoginMode = 'password' | 'code';
 type FeedbackTone = 'info' | 'success' | 'error';
 
 interface AuthPanelProps {
@@ -34,91 +33,20 @@ function getErrorMessage(error: unknown) {
 }
 
 export function AuthPanel({ onSuccess, preferredRole, preferredRoleLabel }: AuthPanelProps) {
-  const { user, logout, isRemoteMode, sendVerificationCode, register, loginWithPassword, loginWithCode, loginAsMockRole, resetPassword, detectChannel } = useAuth();
+  const { user, logout, isRemoteMode, register, loginWithPassword, loginAsMockRole } = useAuth();
   const isStudent = preferredRole === 'student';
   const [authMode, setAuthMode] = useState<AuthMode>('login');
-  const [loginMode, setLoginMode] = useState<LoginMode>('password');
-  const [registerCountdown, setRegisterCountdown] = useState(0);
-  const [loginCountdown, setLoginCountdown] = useState(0);
-  const [forgotCountdown, setForgotCountdown] = useState(0);
   const [feedback, setFeedback] = useState<FeedbackState | null>(null);
   const [loginPasswordForm, setLoginPasswordForm] = useState({
     account: '',
     password: '',
   });
-  const [loginCodeForm, setLoginCodeForm] = useState({
-    account: '',
-    code: '',
-  });
   const [registerForm, setRegisterForm] = useState({
     displayName: '',
     account: '',
-    code: '',
     password: '',
     confirmPassword: '',
   });
-  const [forgotForm, setForgotForm] = useState({
-    account: '',
-    code: '',
-    password: '',
-    confirmPassword: '',
-  });
-
-  useEffect(() => {
-    if (registerCountdown <= 0 && loginCountdown <= 0 && forgotCountdown <= 0) {
-      return;
-    }
-
-    const timer = window.setTimeout(() => {
-      setRegisterCountdown((current) => Math.max(0, current - 1));
-      setLoginCountdown((current) => Math.max(0, current - 1));
-      setForgotCountdown((current) => Math.max(0, current - 1));
-    }, 1000);
-
-    return () => {
-      window.clearTimeout(timer);
-    };
-  }, [loginCountdown, registerCountdown, forgotCountdown]);
-
-  const requestCode = async (account: string, scope: 'register' | 'login' | 'forgot') => {
-    const channel = detectChannel(account);
-    if (!channel) {
-      setFeedback({
-        tone: 'error',
-        message: '请输入有效的中国大陆手机号或邮箱地址，再获取验证码。',
-      });
-      return;
-    }
-
-    const purpose = scope === 'register' ? 'REGISTER' : 'LOGIN';
-
-    try {
-      const result = await sendVerificationCode(account, purpose);
-      const targetLabel = result.channel === 'phone' ? '短信' : '邮件';
-
-      if (result.code) {
-        setFeedback({
-          tone: 'info',
-          message: `${targetLabel}验证码已生成，演示环境验证码为 ${result.code}，5 分钟内有效。`,
-        });
-      } else {
-        setFeedback({
-          tone: 'info',
-          message: `${targetLabel}验证码已发送到您的${targetLabel === '短信' ? '手机' : '邮箱'}，5 分钟内有效。`,
-        });
-      }
-
-      if (scope === 'register') {
-        setRegisterCountdown(60);
-      } else if (scope === 'login') {
-        setLoginCountdown(60);
-      } else {
-        setForgotCountdown(60);
-      }
-    } catch (error) {
-      setFeedback({ tone: 'error', message: getErrorMessage(error) });
-    }
-  };
 
   const submitRegister = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -138,7 +66,6 @@ export function AuthPanel({ onSuccess, preferredRole, preferredRoleLabel }: Auth
         displayName: registerForm.displayName,
         role: preferredRole,
         account: registerForm.account,
-        code: registerForm.code,
         password: registerForm.password,
       });
 
@@ -162,39 +89,6 @@ export function AuthPanel({ onSuccess, preferredRole, preferredRoleLabel }: Auth
         message: '登录成功，正在进入对应工作台。',
       });
       onSuccess?.(nextUser);
-    } catch (error) {
-      setFeedback({ tone: 'error', message: getErrorMessage(error) });
-    }
-  };
-
-  const submitLoginWithCode = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    try {
-      const nextUser = await loginWithCode(loginCodeForm);
-      setFeedback({
-        tone: 'success',
-        message: '登录成功，正在进入对应工作台。',
-      });
-      onSuccess?.(nextUser);
-    } catch (error) {
-      setFeedback({ tone: 'error', message: getErrorMessage(error) });
-    }
-  };
-
-  const submitForgotPassword = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    if (forgotForm.password !== forgotForm.confirmPassword) {
-      setFeedback({ tone: 'error', message: '两次输入的密码不一致。' });
-      return;
-    }
-
-    try {
-      await resetPassword({ account: forgotForm.account, code: forgotForm.code, newPassword: forgotForm.password });
-      setFeedback({ tone: 'success', message: '密码已重置，请使用新密码登录。' });
-      setForgotForm({ account: '', code: '', password: '', confirmPassword: '' });
-      setAuthMode('login');
     } catch (error) {
       setFeedback({ tone: 'error', message: getErrorMessage(error) });
     }
@@ -240,7 +134,7 @@ export function AuthPanel({ onSuccess, preferredRole, preferredRoleLabel }: Auth
         <div className="callout soft auth-callout">
           {isRemoteMode
             ? '账号数据存储在服务端，退出浏览器后重新登录即可恢复。'
-            : '当前演示版认证数据存储在浏览器本地，正式环境建议将验证码、账号和会话迁移到服务端，并接入国内短信/邮件服务。'}
+            : '当前演示版认证数据存储在浏览器本地，正式环境建议将账号和会话迁移到服务端。'}
         </div>
         <div className="auth-mock-panel auth-mock-panel--session">
           <div>
@@ -298,180 +192,40 @@ export function AuthPanel({ onSuccess, preferredRole, preferredRoleLabel }: Auth
       )}
 
       {authMode === 'forgot' ? (
-        isStudent ? (
-          <div className="callout soft auth-callout">
-            <p>学生账号由任课老师统一分发，如需重置初始密码，请联系班级老师。</p>
-            <button type="button" className="button auth-submit-button" onClick={() => setAuthMode('login')}>
-              返回登录
+        <div className="callout soft auth-callout">
+          <p>{isStudent ? '学生账号由任课老师统一分发，如需重置初始密码，请联系班级老师。' : '如需重置密码，请联系管理员。'}</p>
+          <button type="button" className="button auth-submit-button" onClick={() => setAuthMode('login')}>
+            返回登录
+          </button>
+        </div>
+      ) : authMode === 'login' ? (
+        <form className="stack-md" onSubmit={submitLoginWithPassword}>
+          <label className="field">
+            <span>{isStudent ? '学号' : '手机号或邮箱'}</span>
+            <input
+              value={loginPasswordForm.account}
+              onChange={(event) => setLoginPasswordForm((current) => ({ ...current, account: event.target.value }))}
+              placeholder={isStudent ? '请输入学号（如 S2024001）' : '请输入手机号或邮箱'}
+              autoComplete="username"
+            />
+          </label>
+          <label className="field">
+            <span>密码</span>
+            <input
+              type="password"
+              value={loginPasswordForm.password}
+              onChange={(event) => setLoginPasswordForm((current) => ({ ...current, password: event.target.value }))}
+              placeholder="请输入密码"
+              autoComplete="current-password"
+            />
+          </label>
+          <div className="auth-switch-row">
+            <button type="button" className="auth-switch-link" onClick={() => setAuthMode('forgot')}>
+              忘记密码？
             </button>
           </div>
-        ) : (
-          <form className="stack-md" onSubmit={submitForgotPassword}>
-            <label className="field">
-              <span>手机号或邮箱</span>
-              <input
-                value={forgotForm.account}
-                onChange={(event) => setForgotForm((current) => ({ ...current, account: event.target.value }))}
-                placeholder="请输入注册时用的手机号或邮箱"
-                autoComplete="username"
-              />
-            </label>
-            <div className="auth-code-row">
-              <label className="field auth-code-row__field">
-                <span>验证码</span>
-                <input
-                  value={forgotForm.code}
-                  onChange={(event) => setForgotForm((current) => ({ ...current, code: event.target.value }))}
-                  placeholder="6位验证码"
-                  inputMode="numeric"
-                />
-              </label>
-              <button
-                type="button"
-                className="button auth-code-button"
-                onClick={() => requestCode(forgotForm.account, 'forgot')}
-                disabled={forgotCountdown > 0}
-              >
-                {forgotCountdown > 0 ? `${forgotCountdown}s 后重发` : '获取验证码'}
-              </button>
-            </div>
-            <div className="auth-grid">
-              <label className="field">
-                <span>新密码</span>
-                <input
-                  type="password"
-                  value={forgotForm.password}
-                  onChange={(event) => setForgotForm((current) => ({ ...current, password: event.target.value }))}
-                  placeholder="至少 8 位新密码"
-                  autoComplete="new-password"
-                />
-              </label>
-              <label className="field">
-                <span>确认新密码</span>
-                <input
-                  type="password"
-                  value={forgotForm.confirmPassword}
-                  onChange={(event) => setForgotForm((current) => ({ ...current, confirmPassword: event.target.value }))}
-                  placeholder="再次输入新密码"
-                  autoComplete="new-password"
-                />
-              </label>
-            </div>
-            <div className="auth-switch-row">
-              <button type="button" className="auth-switch-link" onClick={() => setAuthMode('login')}>
-                返回登录
-              </button>
-            </div>
-            <button type="submit" className="button primary auth-submit-button">重置密码</button>
-          </form>
-        )
-      ) : authMode === 'login' ? (
-        isStudent ? (
-          <form className="stack-md" onSubmit={submitLoginWithPassword}>
-            <label className="field">
-              <span>学号</span>
-              <input
-                value={loginPasswordForm.account}
-                onChange={(event) => setLoginPasswordForm((current) => ({ ...current, account: event.target.value }))}
-                placeholder="请输入学号（如 S2024001）"
-                autoComplete="username"
-              />
-            </label>
-            <label className="field">
-              <span>密码</span>
-              <input
-                type="password"
-                value={loginPasswordForm.password}
-                onChange={(event) => setLoginPasswordForm((current) => ({ ...current, password: event.target.value }))}
-                placeholder="请输入密码"
-                autoComplete="current-password"
-              />
-            </label>
-            <div className="auth-switch-row">
-              <button type="button" className="auth-switch-link" onClick={() => setAuthMode('forgot')}>
-                忘记密码？
-              </button>
-            </div>
-            <button type="submit" className="button primary auth-submit-button">立即登录</button>
-          </form>
-        ) : (
-          <>
-            {loginMode === 'password' ? (
-              <form className="stack-md" onSubmit={submitLoginWithPassword}>
-                <label className="field">
-                  <span>手机号或邮箱</span>
-                  <input
-                    value={loginPasswordForm.account}
-                    onChange={(event) => setLoginPasswordForm((current) => ({ ...current, account: event.target.value }))}
-                    placeholder="请输入手机号或邮箱"
-                    autoComplete="username"
-                  />
-                </label>
-                <label className="field">
-                  <span>密码</span>
-                  <input
-                    type="password"
-                    value={loginPasswordForm.password}
-                    onChange={(event) => setLoginPasswordForm((current) => ({ ...current, password: event.target.value }))}
-                    placeholder="请输入密码"
-                    autoComplete="current-password"
-                  />
-                </label>
-                <div className="auth-switch-row">
-                  <span className="auth-switch-row__label">当前使用密码登录</span>
-                  <button type="button" className="auth-switch-link" onClick={() => setLoginMode('code')}>
-                    改用验证码登录
-                  </button>
-                  <button type="button" className="auth-switch-link" onClick={() => setAuthMode('forgot')}>
-                    忘记密码？
-                  </button>
-                </div>
-                <button type="submit" className="button primary auth-submit-button">立即登录</button>
-              </form>
-            ) : (
-              <form className="stack-md" onSubmit={submitLoginWithCode}>
-                <label className="field">
-                  <span>手机号或邮箱</span>
-                  <input
-                    value={loginCodeForm.account}
-                    onChange={(event) => setLoginCodeForm((current) => ({ ...current, account: event.target.value }))}
-                    placeholder="请输入手机号或邮箱"
-                    autoComplete="username"
-                  />
-                </label>
-                <div className="auth-code-row">
-                  <label className="field auth-code-row__field">
-                    <span>验证码</span>
-                    <input
-                      value={loginCodeForm.code}
-                      onChange={(event) => setLoginCodeForm((current) => ({ ...current, code: event.target.value }))}
-                      placeholder="6位验证码"
-                      inputMode="numeric"
-                    />
-                  </label>
-                  <button
-                    type="button"
-                    className="button auth-code-button"
-                    onClick={() => requestCode(loginCodeForm.account, 'login')}
-                    disabled={loginCountdown > 0}
-                  >
-                    {loginCountdown > 0 ? `${loginCountdown}s 后重发` : '获取验证码'}
-                  </button>
-                </div>
-                <div className="auth-switch-row">
-                  <span className="auth-switch-row__label">当前使用验证码登录</span>
-                  <button type="button" className="auth-switch-link" onClick={() => setLoginMode('password')}>
-                    改用密码登录
-                  </button>
-                  <button type="button" className="auth-switch-link" onClick={() => setAuthMode('forgot')}>
-                    忘记密码？
-                  </button>
-                </div>
-                <button type="submit" className="button primary auth-submit-button">验证码登录</button>
-              </form>
-            )}
-          </>
-        )
+          <button type="submit" className="button primary auth-submit-button">立即登录</button>
+        </form>
       ) : (
         <form className="stack-md" onSubmit={submitRegister}>
           <label className="field">
@@ -492,27 +246,6 @@ export function AuthPanel({ onSuccess, preferredRole, preferredRoleLabel }: Auth
               autoComplete="username"
             />
           </label>
-          {!isRemoteMode && (
-            <div className="auth-code-row">
-              <label className="field auth-code-row__field">
-                <span>验证码</span>
-                <input
-                  value={registerForm.code}
-                  onChange={(event) => setRegisterForm((current) => ({ ...current, code: event.target.value }))}
-                  placeholder="6位验证码"
-                  inputMode="numeric"
-                />
-              </label>
-              <button
-                type="button"
-                className="button auth-code-button"
-                onClick={() => requestCode(registerForm.account, 'register')}
-                disabled={registerCountdown > 0}
-              >
-                {registerCountdown > 0 ? `${registerCountdown}s 后重发` : '获取验证码'}
-              </button>
-            </div>
-          )}
           <div className="auth-grid">
             <label className="field">
               <span>密码</span>

@@ -8,7 +8,7 @@ import {
 } from './api';
 
 export type UserRole = 'student' | 'teacher' | 'admin';
-export type AuthChannel = 'phone' | 'email' | 'username';
+export type AuthChannel = 'phone' | 'email' | 'username' | 'student_id';
 
 export interface AuthUser {
   id: string;
