@@ -1,14 +1,21 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../auth/AuthContext';
+import { apiListClasses, apiGetTeachingClasses, apiSetTeachingClasses, apiUpdateProfile, type ApiClassItem } from '../../auth/api';
 
-const allClasses = ['高一（1）班', '高一（2）班', '高一（3）班', '高一（4）班', '高一（5）班', '高二（1）班', '高二（2）班'];
+interface ClassOption {
+  id: string;
+  name: string;
+}
 
 export function TeacherProfilePage() {
   const { user, updateProfile } = useAuth();
   const [editingProfile, setEditingProfile] = useState(false);
   const [displayName, setDisplayName] = useState(user?.displayName ?? '');
-  const [classes, setClasses] = useState<string[]>(['高一（3）班', '高一（5）班']);
+  const [allClasses, setAllClasses] = useState<ClassOption[]>([]);
+  const [selectedClassIds, setSelectedClassIds] = useState<string[]>([]);
+  const [savedClassIds, setSavedClassIds] = useState<string[]>([]);
   const [profileSaved, setProfileSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const [editingPassword, setEditingPassword] = useState(false);
   const [oldPassword, setOldPassword] = useState('');
@@ -17,22 +24,51 @@ export function TeacherProfilePage() {
   const [passwordError, setPasswordError] = useState('');
   const [passwordSaved, setPasswordSaved] = useState(false);
 
-  const toggleClass = (cls: string) => {
-    setClasses((prev) =>
-      prev.includes(cls) ? prev.filter((c) => c !== cls) : [...prev, cls],
+  const fetchData = useCallback(async () => {
+    try {
+      const classList = await apiListClasses();
+      setAllClasses(classList.map((c) => ({ id: c.id, name: c.name })));
+    } catch {
+      // keep defaults on error
+    }
+    try {
+      const teachingData = await apiGetTeachingClasses();
+      setSelectedClassIds(teachingData.classIds);
+      setSavedClassIds(teachingData.classIds);
+    } catch {
+      // keep defaults on error
+    }
+  }, []);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  const toggleClass = (id: string) => {
+    setSelectedClassIds((prev) =>
+      prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id],
     );
   };
 
-  const handleSaveProfile = () => {
-    if (!displayName.trim()) return;
-    updateProfile({ displayName });
-    setEditingProfile(false);
-    setProfileSaved(true);
-    setTimeout(() => setProfileSaved(false), 2000);
+  const handleSaveProfile = async () => {
+    if (!displayName.trim() || saving) return;
+    setSaving(true);
+    try {
+      await apiUpdateProfile({ displayName: displayName.trim() });
+      updateProfile({ displayName: displayName.trim() });
+      await apiSetTeachingClasses(selectedClassIds);
+      setSavedClassIds(selectedClassIds);
+      setEditingProfile(false);
+      setProfileSaved(true);
+      setTimeout(() => setProfileSaved(false), 2000);
+    } catch (err: any) {
+      alert(err.message ?? '保存失败');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleCancelProfile = () => {
     setDisplayName(user?.displayName ?? '');
+    setSelectedClassIds(savedClassIds);
     setEditingProfile(false);
   };
 
@@ -103,20 +139,28 @@ export function TeacherProfilePage() {
         <div>
           <div style={{ marginBottom: '8px', fontSize: '0.875rem', color: 'var(--muted)' }}>任教班级</div>
           {editingProfile ? (
-            <div className="chip-group">
-              {allClasses.map((cls) => (
-                <button
-                  key={cls}
-                  type="button"
-                  className={`chip ${classes.includes(cls) ? 'active' : ''}`}
-                  onClick={() => toggleClass(cls)}
-                >
-                  {cls}
-                </button>
-              ))}
-            </div>
+            allClasses.length === 0 ? (
+              <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--muted)' }}>暂无班级，请先在班级管理中创建班级</p>
+            ) : (
+              <div className="chip-group">
+                {allClasses.map((cls) => (
+                  <button
+                    key={cls.id}
+                    type="button"
+                    className={`chip ${selectedClassIds.includes(cls.id) ? 'active' : ''}`}
+                    onClick={() => toggleClass(cls.id)}
+                  >
+                    {cls.name}
+                  </button>
+                ))}
+              </div>
+            )
           ) : (
-            <p style={{ margin: 0, fontSize: '0.9rem' }}>{classes.length > 0 ? classes.join(' / ') : '暂未设置'}</p>
+            <p style={{ margin: 0, fontSize: '0.9rem' }}>
+              {selectedClassIds.length > 0
+                ? selectedClassIds.map((id) => allClasses.find((c) => c.id === id)?.name ?? id).join(' / ')
+                : '暂未设置'}
+            </p>
           )}
         </div>
 

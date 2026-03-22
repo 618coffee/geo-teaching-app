@@ -82,4 +82,5 @@ public class UserEntity {
     public Instant getLastLoginAt() { return lastLoginAt; }
 
     public void setLastLoginAt(Instant lastLoginAt) { this.lastLoginAt = lastLoginAt; }
+    public void setDisplayName(String displayName) { this.displayName = displayName; }
 }
