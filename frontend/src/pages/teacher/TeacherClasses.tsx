@@ -1,20 +1,47 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { apiListClasses, apiCreateClass, apiUpdateClass, apiDeleteClass, type ApiClassItem } from '../../auth/api';
 
 interface ClassItem {
+  id: string;
   name: string;
   students: number;
   teacher: string;
   status: string;
 }
 
-function AddClassModal({ onClose, onAdd }: { onClose: () => void; onAdd: (c: ClassItem) => void }) {
-  const [name, setName] = useState('');
-  const [teacher, setTeacher] = useState('胡永宝');
+function ClassModal({ editing, onClose, onSaved }: {
+  editing?: ClassItem;
+  onClose: () => void;
+  onSaved: (c: ClassItem, isNew: boolean) => void;
+}) {
+  const isEdit = !!editing;
+  const [name, setName] = useState(editing?.name ?? '');
+  const [teacher, setTeacher] = useState(editing?.teacher ?? '');
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleAdd = () => {
-    if (!name.trim()) return;
-    onAdd({ name: name.trim(), students: 0, teacher: teacher.trim() || '胡永宝', status: '正常' });
-    onClose();
+  const handleSubmit = async () => {
+    if (!name.trim() || submitting) return;
+    setSubmitting(true);
+    try {
+      if (isEdit) {
+        const updated = await apiUpdateClass(editing!.id, {
+          name: name.trim(),
+          teacherName: teacher.trim() || undefined,
+        });
+        onSaved({ id: updated.id, name: updated.name, students: updated.students, teacher: updated.teacher, status: updated.status }, false);
+      } else {
+        const created = await apiCreateClass({
+          name: name.trim(),
+          teacherName: teacher.trim() || undefined,
+        });
+        onSaved({ id: created.id, name: created.name, students: created.students, teacher: created.teacher, status: created.status }, true);
+      }
+      onClose();
+    } catch (err: any) {
+      alert(err.message ?? (isEdit ? '修改失败' : '新增失败'));
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -50,9 +77,9 @@ function AddClassModal({ onClose, onAdd }: { onClose: () => void; onAdd: (c: Cla
           ×
         </button>
 
-        <h3 style={{ margin: '0 0 4px', fontWeight: 700 }}>新增班级</h3>
+        <h3 style={{ margin: '0 0 4px', fontWeight: 700 }}>{isEdit ? '修改班级' : '新增班级'}</h3>
         <p style={{ margin: '0 0 24px', color: 'var(--muted)', fontSize: '0.875rem' }}>
-          为学校添加一个新的班级
+          {isEdit ? '修改班级信息' : '为学校添加一个新的班级'}
         </p>
 
         <div className="stack-md">
@@ -78,9 +105,9 @@ function AddClassModal({ onClose, onAdd }: { onClose: () => void; onAdd: (c: Cla
             type="button"
             className="button primary"
             style={{ width: '100%', marginTop: '8px' }}
-            onClick={handleAdd}
+            onClick={handleSubmit}
           >
-            新增
+            {isEdit ? '保存' : '新增'}
           </button>
         </div>
       </div>
@@ -89,29 +116,55 @@ function AddClassModal({ onClose, onAdd }: { onClose: () => void; onAdd: (c: Cla
 }
 
 export function TeacherClassesPage() {
-  const [showModal, setShowModal] = useState(false);
-  const [classes, setClasses] = useState<ClassItem[]>([
-    { name: '高一（1）班', students: 42, teacher: '胡永宝', status: '正常' },
-    { name: '高一（2）班', students: 45, teacher: '胡永宝', status: '正常' },
-    { name: '高一（3）班', students: 41, teacher: '胡永宝', status: '正常' },
-    { name: '高一（4）班', students: 43, teacher: '胡永宝', status: '正常' },
-    { name: '高一（5）班', students: 44, teacher: '胡永宝', status: '正常' },
-  ]);
+  const [modalTarget, setModalTarget] = useState<ClassItem | 'new' | null>(null);
+  const [classes, setClasses] = useState<ClassItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const handleAdd = (c: ClassItem) => {
-    setClasses((prev) => [...prev, c]);
+  const fetchClasses = useCallback(async () => {
+    try {
+      const list = await apiListClasses();
+      setClasses(list.map((c) => ({ id: c.id, name: c.name, students: c.students, teacher: c.teacher, status: c.status })));
+    } catch {
+      // keep existing data on error
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchClasses(); }, [fetchClasses]);
+
+  const handleSaved = (c: ClassItem, isNew: boolean) => {
+    if (isNew) {
+      setClasses((prev) => [c, ...prev]);
+    } else {
+      setClasses((prev) => prev.map((x) => x.id === c.id ? c : x));
+    }
+  };
+
+  const handleDelete = async (cls: ClassItem) => {
+    if (!confirm(`确定删除班级「${cls.name}」吗？`)) return;
+    try {
+      await apiDeleteClass(cls.id);
+      setClasses((prev) => prev.filter((c) => c.id !== cls.id));
+    } catch (err: any) {
+      alert(err.message ?? '删除失败');
+    }
   };
 
   return (
     <>
-      {showModal && <AddClassModal onClose={() => setShowModal(false)} onAdd={handleAdd} />}
+      {modalTarget && <ClassModal
+        editing={modalTarget === 'new' ? undefined : modalTarget}
+        onClose={() => setModalTarget(null)}
+        onSaved={handleSaved}
+      />}
       <div className="card">
         <div className="row-between">
           <div>
             <div className="eyebrow">教师端 · 班级管理</div>
             <h3>我的班级</h3>
           </div>
-          <button className="button primary" onClick={() => setShowModal(true)}>+ 新增班级</button>
+          <button className="button primary" onClick={() => setModalTarget('new')}>+ 新增班级</button>
         </div>
         <table className="table">
           <thead>
@@ -124,14 +177,23 @@ export function TeacherClassesPage() {
             </tr>
           </thead>
           <tbody>
-            {classes.map((cls) => (
-              <tr key={cls.name}>
+            {loading ? (
+              <tr><td colSpan={5} style={{ textAlign: 'center', padding: '24px', color: 'var(--muted)' }}>加载中…</td></tr>
+            ) : classes.length === 0 ? (
+              <tr><td colSpan={5} style={{ textAlign: 'center', padding: '24px', color: 'var(--muted)' }}>暂无班级，点击右上角新增</td></tr>
+            ) : classes.map((cls) => (
+              <tr key={cls.id}>
                 <td>{cls.name}</td>
                 <td>{cls.students} 人</td>
                 <td>{cls.teacher}</td>
                 <td>{cls.status}</td>
                 <td>
-                  <button className="button" style={{ padding: '4px 10px', fontSize: '0.8rem' }}>查看详情</button>
+                  <button className="button" style={{ padding: '4px 10px', fontSize: '0.8rem', marginRight: '6px' }} onClick={() => setModalTarget(cls)}>修改</button>
+                  <button
+                    className="button"
+                    style={{ padding: '4px 10px', fontSize: '0.8rem', color: 'var(--danger, #e53e3e)' }}
+                    onClick={() => handleDelete(cls)}
+                  >删除</button>
                 </td>
               </tr>
             ))}

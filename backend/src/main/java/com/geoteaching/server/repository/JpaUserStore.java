@@ -37,4 +37,13 @@ public class JpaUserStore implements UserStore {
             jpaRepository.save(entity);
         });
     }
+
+    @Override
+    @Transactional
+    public void updateDisplayName(String account, String displayName) {
+        jpaRepository.findByAccount(account).ifPresent(entity -> {
+            entity.setDisplayName(displayName);
+            jpaRepository.save(entity);
+        });
+    }
 }

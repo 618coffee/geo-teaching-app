@@ -104,3 +104,104 @@ export function apiGetMe() {
 export function apiLogout() {
   return request<void>('/api/v1/auth/logout', { method: 'POST' });
 }
+
+// ── Class API types ──
+
+export interface ApiClassItem {
+  id: string;
+  name: string;
+  students: number;
+  teacher: string;
+  status: string;
+  createdAt: string;
+}
+
+// ── Class API calls ──
+
+export function apiListClasses() {
+  return request<ApiClassItem[]>('/api/v1/classes');
+}
+
+export function apiCreateClass(data: { name: string; teacherName?: string }) {
+  return request<ApiClassItem>('/api/v1/classes', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export function apiDeleteClass(id: string) {
+  return request<void>(`/api/v1/classes/${encodeURIComponent(id)}`, { method: 'DELETE' });
+}
+
+export function apiUpdateClass(id: string, data: { name: string; teacherName?: string }) {
+  return request<ApiClassItem>(`/api/v1/classes/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+// ── Student API types ──
+
+export interface ApiStudentItem {
+  id: string;
+  name: string;
+  className: string;
+  classId: string;
+  studentId: string;
+  status: string;
+  createdAt: string;
+}
+
+// ── Student API calls ──
+
+export function apiListStudents(classId?: string) {
+  const query = classId ? `?classId=${encodeURIComponent(classId)}` : '';
+  return request<ApiStudentItem[]>(`/api/v1/students${query}`);
+}
+
+export function apiCreateStudent(data: {
+  classId: string;
+  studentNumber: string;
+  name: string;
+  password?: string;
+}) {
+  return request<ApiStudentItem>('/api/v1/students', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export function apiDeleteStudent(id: string) {
+  return request<void>(`/api/v1/students/${encodeURIComponent(id)}`, { method: 'DELETE' });
+}
+
+export function apiUpdateStudent(id: string, data: { name: string; classId: string; status?: string }) {
+  return request<ApiStudentItem>(`/api/v1/students/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+// ── Profile API ──
+
+export function apiUpdateProfile(data: { displayName: string }) {
+  return request<ApiAuthUser>('/api/v1/profile', {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export interface TeachingClassesData {
+  classIds: string[];
+}
+
+export function apiGetTeachingClasses() {
+  return request<TeachingClassesData>('/api/v1/profile/teaching-classes');
+}
+
+export function apiSetTeachingClasses(classIds: string[]) {
+  return request<TeachingClassesData>('/api/v1/profile/teaching-classes', {
+    method: 'PUT',
+    body: JSON.stringify({ classIds }),
+  });
+}

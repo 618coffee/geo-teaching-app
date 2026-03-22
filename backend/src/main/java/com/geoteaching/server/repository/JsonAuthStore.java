@@ -65,6 +65,31 @@ public class JsonAuthStore implements UserStore {
         writeData(data);
     }
 
+    public synchronized void updateDisplayName(String account, String displayName) {
+        AuthStoreData data = readData();
+        List<StoredUser> users = new ArrayList<>();
+
+        for (StoredUser user : data.getUsers()) {
+            if (user.account().equals(account)) {
+                users.add(new StoredUser(
+                        user.id(),
+                        user.account(),
+                        user.channel(),
+                        user.role(),
+                        displayName,
+                        user.passwordHash(),
+                        user.passwordSalt(),
+                        user.createdAt(),
+                        user.lastLoginAt()));
+            } else {
+                users.add(user);
+            }
+        }
+
+        data.setUsers(users);
+        writeData(data);
+    }
+
     private AuthStoreData readData() {
         try {
             ensureDirectory();

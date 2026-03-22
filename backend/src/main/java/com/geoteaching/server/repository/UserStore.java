@@ -15,4 +15,6 @@ public interface UserStore {
     void saveUser(StoredUser user);
 
     void updateLastLogin(String account, Instant lastLoginAt);
+
+    void updateDisplayName(String account, String displayName);
 }
