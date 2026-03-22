@@ -30,7 +30,8 @@ services:
       MYSQL_USER: geo_teaching
       MYSQL_PASSWORD: geo_teaching_pass
       JWT_SECRET: ${JWT_SECRET:-replace-this-in-production}
-      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}
+      CORS_ORIGIN_1: ${CORS_ORIGIN_1:-http://localhost:5173}
+      CORS_ORIGIN_2: ${CORS_ORIGIN_2:-http://127.0.0.1:5173}
     ports:
       - "4000:4000"
 

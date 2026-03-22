@@ -15,7 +15,8 @@ app:
     access-token-expires-in-hours: ${ACCESS_TOKEN_EXPIRES_IN_HOURS:2}
     data-file-path: ${AUTH_DATA_FILE_PATH:./data/dev-auth-store.json}
     cors-origins:
-      - ${CORS_ORIGIN:http://localhost:5173}
+      - ${CORS_ORIGIN_1:http://localhost:5173}
+      - ${CORS_ORIGIN_2:http://127.0.0.1:5173}
 
 ---
 # Default profile: H2 in-memory (for local dev without MySQL)

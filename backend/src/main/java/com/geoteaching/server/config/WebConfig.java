@@ -28,7 +28,7 @@ public class WebConfig implements WebMvcConfigurer {
     private @NonNull String[] resolveCorsOrigins() {
         List<String> configuredOrigins = authProperties.corsOrigins();
         if (configuredOrigins == null || configuredOrigins.isEmpty()) {
-            return new String[] {"http://localhost:5173"};
+            return new String[] {"http://localhost:5173", "http://127.0.0.1:5173"};
         }
 
         return configuredOrigins.stream()
