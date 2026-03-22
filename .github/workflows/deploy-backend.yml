@@ -1,0 +1,97 @@
+name: Deploy Backend to ECS
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: '部署环境'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+      skip_tests:
+        description: '跳过测试'
+        required: false
+        default: true
+        type: boolean
+
+jobs:
+  build-and-deploy:
+    name: Build & Deploy Backend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: 'maven'
+          cache-dependency-path: backend/pom.xml
+
+      - name: Build with Maven
+        working-directory: backend
+        run: |
+          chmod +x mvnw
+          ./mvnw package ${{ inputs.skip_tests && '-DskipTests' || '' }}
+
+      - name: Find JAR file
+        id: find-jar
+        working-directory: backend
+        run: |
+          JAR_FILE=$(ls target/*.jar | grep -v '.original' | head -1)
+          echo "jar_file=$JAR_FILE" >> "$GITHUB_OUTPUT"
+          echo "Found JAR: $JAR_FILE"
+
+      - name: Upload JAR to ECS via SCP
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.ECS_HOST }}
+          username: root
+          password: ${{ secrets.ECS_PASSWORD }}
+          source: ${{ steps.find-jar.outputs.jar_file }}
+          target: /tmp/
+          strip_components: 2
+
+      - name: Deploy and restart service
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.ECS_HOST }}
+          username: root
+          password: ${{ secrets.ECS_PASSWORD }}
+          script: |
+            set -e
+
+            echo ">>> 备份旧 JAR..."
+            if [ -f /opt/geo-teaching-app/app.jar ]; then
+              cp /opt/geo-teaching-app/app.jar /opt/geo-teaching-app/app.jar.bak
+            fi
+
+            echo ">>> 部署新 JAR..."
+            mv /tmp/*.jar /opt/geo-teaching-app/app.jar
+
+            echo ">>> 重启后端服务..."
+            systemctl restart geo-teaching-app
+
+            echo ">>> 等待服务启动..."
+            sleep 8
+
+            echo ">>> 检查服务状态..."
+            if systemctl is-active --quiet geo-teaching-app; then
+              echo "✅ 后端服务运行正常"
+            else
+              echo "❌ 服务启动失败，回滚..."
+              if [ -f /opt/geo-teaching-app/app.jar.bak ]; then
+                mv /opt/geo-teaching-app/app.jar.bak /opt/geo-teaching-app/app.jar
+                systemctl restart geo-teaching-app
+                echo "已回滚到上一版本"
+              fi
+              journalctl -u geo-teaching-app --no-pager -n 30
+              exit 1
+            fi
+
+            echo ">>> 部署完成！"
