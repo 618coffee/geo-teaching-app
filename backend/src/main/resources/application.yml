@@ -1,6 +1,10 @@
 spring:
   application:
     name: geo-teaching-app-server
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: update
 
 server:
   port: ${PORT:4000}
@@ -9,13 +13,32 @@ app:
   auth:
     jwt-secret: ${JWT_SECRET:replace-this-in-production}
     access-token-expires-in-hours: ${ACCESS_TOKEN_EXPIRES_IN_HOURS:2}
-    verification-code-ttl-seconds: ${VERIFICATION_CODE_TTL_SECONDS:300}
-    verification-code-retry-seconds: ${VERIFICATION_CODE_RETRY_SECONDS:60}
-    expose-verification-code: ${EXPOSE_VERIFICATION_CODE:true}
-    notification-provider: ${NOTIFICATION_PROVIDER:mock}
     data-file-path: ${AUTH_DATA_FILE_PATH:./data/dev-auth-store.json}
     cors-origins:
       - ${CORS_ORIGIN:http://localhost:5173}
-    aliyun-sms-sign-name: ${ALIYUN_SMS_SIGN_NAME:}
-    aliyun-sms-template-code: ${ALIYUN_SMS_TEMPLATE_CODE:}
-    aliyun-email-account-name: ${ALIYUN_EMAIL_ACCOUNT_NAME:}
+
+---
+# Default profile: H2 in-memory (for local dev without MySQL)
+spring:
+  config:
+    activate:
+      on-profile: "!mysql"
+  datasource:
+    url: jdbc:h2:mem:devdb
+    driver-class-name: org.h2.Driver
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+
+---
+# MySQL profile: used in Docker / ECS production
+spring:
+  config:
+    activate:
+      on-profile: mysql
+  datasource:
+    url: ${MYSQL_URL:jdbc:mysql://localhost:3306/geo_teaching?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai&characterEncoding=UTF-8}
+    username: ${MYSQL_USER:geo_teaching}
+    password: ${MYSQL_PASSWORD:geo_teaching_pass}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    database-platform: org.hibernate.dialect.MySQLDialect

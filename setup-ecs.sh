@@ -70,8 +70,6 @@ Restart=on-failure
 RestartSec=5
 Environment=SPRING_PROFILES_ACTIVE=prod
 Environment=PORT=4000
-Environment=EXPOSE_VERIFICATION_CODE=false
-Environment=NOTIFICATION_PROVIDER=mock
 Environment=AUTH_DATA_FILE_PATH=/opt/geo-teaching-app/data/auth-store.json
 # 生产环境必须修改下面这行！
 Environment=JWT_SECRET=change-this-to-a-random-secret-in-production

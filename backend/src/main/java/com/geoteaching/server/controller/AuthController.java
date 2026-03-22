@@ -1,13 +1,10 @@
 package com.geoteaching.server.controller;
 
-import com.geoteaching.server.dto.request.LoginWithCodeRequest;
 import com.geoteaching.server.dto.request.LoginWithPasswordRequest;
 import com.geoteaching.server.dto.request.RegisterRequest;
-import com.geoteaching.server.dto.request.SendCodeRequest;
 import com.geoteaching.server.dto.response.ApiSuccessResponse;
 import com.geoteaching.server.dto.response.AuthResultResponse;
 import com.geoteaching.server.dto.response.AuthUserEnvelope;
-import com.geoteaching.server.dto.response.SendCodeResponse;
 import com.geoteaching.server.exception.ApiException;
 import com.geoteaching.server.service.AuthService;
 import jakarta.validation.Valid;
@@ -31,11 +28,6 @@ public class AuthController {
         this.authService = authService;
     }
 
-    @PostMapping("/send-code")
-    public ApiSuccessResponse<SendCodeResponse> sendCode(@Valid @RequestBody SendCodeRequest request) {
-        return ApiSuccessResponse.of(authService.sendVerificationCode(request));
-    }
-
     @PostMapping("/register")
     public ResponseEntity<ApiSuccessResponse<AuthResultResponse>> register(@Valid @RequestBody RegisterRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -45,11 +37,6 @@ public class AuthController {
     @PostMapping("/login/password")
     public ApiSuccessResponse<AuthResultResponse> loginWithPassword(@Valid @RequestBody LoginWithPasswordRequest request) {
         return ApiSuccessResponse.of(authService.loginWithPassword(request));
-    }
-
-    @PostMapping("/login/code")
-    public ApiSuccessResponse<AuthResultResponse> loginWithCode(@Valid @RequestBody LoginWithCodeRequest request) {
-        return ApiSuccessResponse.of(authService.loginWithCode(request));
     }
 
     @GetMapping("/me")

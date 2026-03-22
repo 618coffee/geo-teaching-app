@@ -8,8 +8,6 @@ public record RegisterRequest(
         String account,
         @NotBlank(message = "密码不能为空")
         String password,
-        @NotBlank(message = "验证码不能为空")
-        String code,
         @NotBlank(message = "姓名不能为空")
         String displayName,
         UserRole role) {
