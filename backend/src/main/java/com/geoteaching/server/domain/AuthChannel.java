@@ -5,7 +5,8 @@ import com.fasterxml.jackson.annotation.JsonValue;
 
 public enum AuthChannel {
     PHONE("phone"),
-    EMAIL("email");
+    EMAIL("email"),
+    USERNAME("username");
 
     private final String value;
 

@@ -2,10 +2,8 @@ package com.geoteaching.server.repository;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.geoteaching.server.config.AuthProperties;
-import com.geoteaching.server.domain.VerificationCodePurpose;
 import com.geoteaching.server.model.AuthStoreData;
 import com.geoteaching.server.model.StoredUser;
-import com.geoteaching.server.model.VerificationCodeRecord;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -13,10 +11,12 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public class JsonAuthStore {
+@Profile("!mysql")
+public class JsonAuthStore implements UserStore {
 
     private final ObjectMapper objectMapper;
     private final Path dataFilePath;
@@ -65,70 +65,6 @@ public class JsonAuthStore {
         writeData(data);
     }
 
-    public synchronized void saveVerificationCode(VerificationCodeRecord record) {
-        AuthStoreData data = readData();
-        Instant now = Instant.now();
-
-        List<VerificationCodeRecord> records = data.getVerificationCodes().stream()
-                .filter(item -> item.expiresAt().isAfter(now))
-                .filter(item -> !(item.account().equals(record.account()) && item.purpose() == record.purpose()))
-                .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
-        records.add(record);
-
-        data.setVerificationCodes(records);
-        writeData(data);
-    }
-
-    public synchronized Optional<VerificationCodeRecord> findActiveVerificationCode(String account, VerificationCodePurpose purpose) {
-        AuthStoreData data = readData();
-        Instant now = Instant.now();
-        List<VerificationCodeRecord> nextRecords = data.getVerificationCodes().stream()
-                .filter(record -> record.expiresAt().isAfter(now))
-                .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
-
-        data.setVerificationCodes(nextRecords);
-        writeData(data);
-
-        return nextRecords.stream()
-                .filter(record -> record.account().equals(account) && record.purpose() == purpose)
-                .findFirst();
-    }
-
-    public synchronized VerificationCodeConsumeResult consumeVerificationCode(String account, VerificationCodePurpose purpose, String code) {
-        AuthStoreData data = readData();
-        Instant now = Instant.now();
-        List<VerificationCodeRecord> nextRecords = new ArrayList<>();
-        VerificationCodeRecord matchedRecord = null;
-
-        for (VerificationCodeRecord record : data.getVerificationCodes()) {
-            if (!record.expiresAt().isAfter(now)) {
-                continue;
-            }
-
-            if (record.account().equals(account) && record.purpose() == purpose) {
-                matchedRecord = record;
-                if (record.code().equals(code)) {
-                    continue;
-                }
-            }
-
-            nextRecords.add(record);
-        }
-
-        data.setVerificationCodes(nextRecords);
-        writeData(data);
-
-        if (matchedRecord == null) {
-            return new VerificationCodeConsumeResult(VerificationCodeStatus.MISSING, null);
-        }
-
-        if (!matchedRecord.code().equals(code)) {
-            return new VerificationCodeConsumeResult(VerificationCodeStatus.INVALID, matchedRecord);
-        }
-
-        return new VerificationCodeConsumeResult(VerificationCodeStatus.SUCCESS, matchedRecord);
-    }
-
     private AuthStoreData readData() {
         try {
             ensureDirectory();
@@ -156,14 +92,5 @@ public class JsonAuthStore {
         if (parent != null) {
             Files.createDirectories(parent);
         }
-    }
-
-    public record VerificationCodeConsumeResult(VerificationCodeStatus status, VerificationCodeRecord record) {
-    }
-
-    public enum VerificationCodeStatus {
-        SUCCESS,
-        MISSING,
-        INVALID
     }
 }

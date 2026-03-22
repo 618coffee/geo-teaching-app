@@ -7,13 +7,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public record AuthProperties(
         String jwtSecret,
         long accessTokenExpiresInHours,
-        long verificationCodeTtlSeconds,
-        long verificationCodeRetrySeconds,
-        boolean exposeVerificationCode,
-        String notificationProvider,
         String dataFilePath,
-        List<String> corsOrigins,
-        String aliyunSmsSignName,
-        String aliyunSmsTemplateCode,
-        String aliyunEmailAccountName) {
+        List<String> corsOrigins) {
 }

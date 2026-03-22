@@ -1,7 +1,14 @@
 import { createContext, useContext, useState, type ReactNode } from 'react';
+import {
+  apiRegister,
+  apiLoginWithPassword,
+  apiLogout,
+  type ApiAuthUser,
+  ApiError,
+} from './api';
 
 export type UserRole = 'student' | 'teacher' | 'admin';
-export type AuthChannel = 'phone' | 'email' | 'student_id';
+export type AuthChannel = 'phone' | 'email' | 'username';
 
 export interface AuthUser {
   id: string;
@@ -16,16 +23,8 @@ interface StoredAuthUser extends AuthUser {
   password: string;
 }
 
-interface VerificationCodeRecord {
-  account: string;
-  channel: AuthChannel;
-  code: string;
-  expiresAt: number;
-}
-
 interface RegisterInput {
   account: string;
-  code: string;
   password: string;
   displayName: string;
   role: UserRole;
@@ -36,42 +35,28 @@ interface LoginWithPasswordInput {
   password: string;
 }
 
-interface LoginWithCodeInput {
-  account: string;
-  code: string;
-}
-
-interface ResetPasswordInput {
-  account: string;
-  code: string;
-  newPassword: string;
-}
-
-interface SendVerificationCodeResult {
-  channel: AuthChannel;
-  code: string;
-  expiresInSeconds: number;
-}
-
 interface AuthContextValue {
   user: AuthUser | null;
   isAuthenticated: boolean;
+  isRemoteMode: boolean;
   mockUsers: AuthUser[];
-  sendVerificationCode: (account: string) => SendVerificationCodeResult;
-  register: (input: RegisterInput) => AuthUser;
-  loginWithPassword: (input: LoginWithPasswordInput) => AuthUser;
-  loginWithCode: (input: LoginWithCodeInput) => AuthUser;
+  register: (input: RegisterInput) => Promise<AuthUser>;
+  loginWithPassword: (input: LoginWithPasswordInput) => Promise<AuthUser>;
   loginAsMockRole: (role: UserRole) => AuthUser;
-  resetPassword: (input: ResetPasswordInput) => void;
   updateProfile: (input: { displayName: string }) => void;
   logout: () => void;
   detectChannel: (value: string) => AuthChannel | null;
 }
 
 const SESSION_STORAGE_KEY = 'geo-teaching-app-auth-session';
+const TOKEN_STORAGE_KEY = 'geo-teaching-app-access-token';
 const USERS_STORAGE_KEY = 'geo-teaching-app-auth-users';
-const CODES_STORAGE_KEY = 'geo-teaching-app-auth-codes';
-const CODE_EXPIRES_IN_SECONDS = 300;
+
+/**
+ * Auth mode: 'remote' calls backend API, 'local' uses browser localStorage mock.
+ * Default is remote. Set VITE_AUTH_MODE=local for pure frontend development.
+ */
+const AUTH_MODE: 'remote' | 'local' = (import.meta.env.VITE_AUTH_MODE === 'local') ? 'local' : 'remote';
 
 const phonePattern = /^1[3-9]\d{9}$/;
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/i;
@@ -124,6 +109,8 @@ const MOCK_USER_ACCOUNTS = new Set(MOCK_USERS.map((user) => user.account));
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+// ── Helpers: localStorage ──
+
 function readStoredJson<T>(key: string, fallback: T): T {
   if (typeof window === 'undefined') {
     return fallback;
@@ -161,7 +148,7 @@ function normalizeAccount(account: string) {
   return account.trim().toLowerCase();
 }
 
-export function detectAuthChannel(value: string): AuthChannel | null {
+export function detectAuthChannel(value: string): AuthChannel {
   const normalizedValue = value.trim();
 
   if (phonePattern.test(normalizedValue)) {
@@ -172,7 +159,7 @@ export function detectAuthChannel(value: string): AuthChannel | null {
     return 'email';
   }
 
-  return null;
+  return 'username';
 }
 
 export function getDefaultRouteForRole(role: UserRole) {
@@ -187,6 +174,8 @@ function sanitizeUser(user: StoredAuthUser): AuthUser {
   const { password: _password, ...safeUser } = user;
   return safeUser;
 }
+
+// ── Helpers: local (mock) storage ──
 
 function readUsers() {
   const storedUsers = readStoredJson<StoredAuthUser[]>(USERS_STORAGE_KEY, []);
@@ -216,56 +205,6 @@ function writeSessionUser(user: AuthUser) {
   writeStoredJson(SESSION_STORAGE_KEY, user);
 }
 
-function cleanExpiredCodes(records: Record<string, VerificationCodeRecord>) {
-  const now = Date.now();
-  let didMutate = false;
-  const nextRecords = { ...records };
-
-  for (const [account, record] of Object.entries(records)) {
-    if (record.expiresAt <= now) {
-      delete nextRecords[account];
-      didMutate = true;
-    }
-  }
-
-  if (didMutate) {
-    writeStoredJson(CODES_STORAGE_KEY, nextRecords);
-  }
-
-  return nextRecords;
-}
-
-function readCodes() {
-  return cleanExpiredCodes(readStoredJson<Record<string, VerificationCodeRecord>>(CODES_STORAGE_KEY, {}));
-}
-
-function writeCodes(records: Record<string, VerificationCodeRecord>) {
-  writeStoredJson(CODES_STORAGE_KEY, records);
-}
-
-function generateVerificationCode() {
-  return `${Math.floor(100000 + Math.random() * 900000)}`;
-}
-
-function verifyCode(account: string, code: string) {
-  const normalizedAccount = normalizeAccount(account);
-  const records = readCodes();
-  const record = records[normalizedAccount];
-
-  if (!record) {
-    throw new Error('请先获取验证码，或验证码已过期。');
-  }
-
-  if (record.code !== code.trim()) {
-    throw new Error('验证码不正确，请重新输入。');
-  }
-
-  delete records[normalizedAccount];
-  writeCodes(records);
-
-  return record.channel;
-}
-
 function getMockUserByRole(role: UserRole) {
   const nextUser = MOCK_USERS.find((item) => item.role === role);
   if (!nextUser) {
@@ -275,42 +214,64 @@ function getMockUserByRole(role: UserRole) {
   return nextUser;
 }
 
+// ── Helpers: convert backend API user to local AuthUser ──
+
+const channelMap: Record<string, AuthChannel> = { PHONE: 'phone', EMAIL: 'email', USERNAME: 'username', phone: 'phone', email: 'email', username: 'username' };
+const roleMap: Record<string, UserRole> = { STUDENT: 'student', TEACHER: 'teacher', ADMIN: 'admin', student: 'student', teacher: 'teacher', admin: 'admin' };
+const roleToApi: Record<UserRole, 'STUDENT' | 'TEACHER' | 'ADMIN'> = { student: 'STUDENT', teacher: 'TEACHER', admin: 'ADMIN' };
+
+function apiUserToAuthUser(apiUser: ApiAuthUser): AuthUser {
+  return {
+    id: apiUser.id,
+    account: apiUser.account,
+    channel: channelMap[apiUser.channel] ?? 'email',
+    role: roleMap[apiUser.role] ?? 'student',
+    displayName: apiUser.displayName,
+    createdAt: apiUser.createdAt,
+  };
+}
+
+function wrapApiError(e: unknown): never {
+  if (e instanceof ApiError) {
+    throw new Error(e.message);
+  }
+  if (e instanceof Error) {
+    throw e;
+  }
+  throw new Error('操作失败，请稍后重试。');
+}
+
+// ── Provider ──
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(readSessionUser);
   const mockUsers = MOCK_USERS.map(sanitizeUser);
+  const isRemoteMode = AUTH_MODE === 'remote';
 
-  const sendVerificationCode = (account: string): SendVerificationCodeResult => {
-    const channel = detectAuthChannel(account);
-    if (!channel) {
-      throw new Error('请输入有效的中国大陆手机号或邮箱地址。');
+  // ── Register ──
+
+  const register = async (input: RegisterInput): Promise<AuthUser> => {
+    if (isRemoteMode) {
+      try {
+        const res = await apiRegister({
+          account: input.account,
+          password: input.password,
+          displayName: input.displayName,
+          role: roleToApi[input.role],
+        });
+        window.localStorage.setItem(TOKEN_STORAGE_KEY, res.accessToken);
+        const authUser = apiUserToAuthUser(res.user);
+        writeSessionUser(authUser);
+        setUser(authUser);
+        return authUser;
+      } catch (e) {
+        wrapApiError(e);
+      }
     }
 
-    const normalizedAccount = normalizeAccount(account);
-    const code = generateVerificationCode();
-    const records = readCodes();
-
-    records[normalizedAccount] = {
-      account: normalizedAccount,
-      channel,
-      code,
-      expiresAt: Date.now() + CODE_EXPIRES_IN_SECONDS * 1000,
-    };
-
-    writeCodes(records);
-
-    return {
-      channel,
-      code,
-      expiresInSeconds: CODE_EXPIRES_IN_SECONDS,
-    };
-  };
-
-  const register = (input: RegisterInput) => {
+    // local mode
     const normalizedAccount = normalizeAccount(input.account);
     const channel = detectAuthChannel(normalizedAccount);
-    if (!channel) {
-      throw new Error('请输入有效的中国大陆手机号或邮箱地址。');
-    }
 
     if (input.password.trim().length < 8) {
       throw new Error('密码至少需要 8 位。');
@@ -319,10 +280,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const users = readUsers();
     const existingUser = users.find((item) => item.account === normalizedAccount);
     if (existingUser) {
-      throw new Error('该手机号或邮箱已注册，请直接登录。');
+      throw new Error('该账号已注册，请直接登录。');
     }
-
-    verifyCode(normalizedAccount, input.code);
 
     const nextUser: StoredAuthUser = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
@@ -344,7 +303,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return safeUser;
   };
 
-  const loginWithPassword = (input: LoginWithPasswordInput) => {
+  // ── Login with password ──
+
+  const loginWithPassword = async (input: LoginWithPasswordInput): Promise<AuthUser> => {
+    if (isRemoteMode) {
+      try {
+        const res = await apiLoginWithPassword(input.account, input.password);
+        window.localStorage.setItem(TOKEN_STORAGE_KEY, res.accessToken);
+        const authUser = apiUserToAuthUser(res.user);
+        writeSessionUser(authUser);
+        setUser(authUser);
+        return authUser;
+      } catch (e) {
+        wrapApiError(e);
+      }
+    }
+
+    // local mode
     const normalizedAccount = normalizeAccount(input.account);
     const existingUser = readUsers().find((item) => item.account === normalizedAccount);
 
@@ -359,22 +334,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return safeUser;
   };
 
-  const loginWithCode = (input: LoginWithCodeInput) => {
-    const normalizedAccount = normalizeAccount(input.account);
-    const existingUser = readUsers().find((item) => item.account === normalizedAccount);
-
-    if (!existingUser) {
-      throw new Error('账号不存在，请先完成注册。');
-    }
-
-    verifyCode(normalizedAccount, input.code);
-
-    const safeUser = sanitizeUser(existingUser);
-    writeSessionUser(safeUser);
-    setUser(safeUser);
-
-    return safeUser;
-  };
+  // ── Mock quick-login (always local, available in any mode) ──
 
   const loginAsMockRole = (role: UserRole) => {
     const safeUser = sanitizeUser(getMockUserByRole(role));
@@ -384,24 +344,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return safeUser;
   };
 
-  const resetPassword = (input: ResetPasswordInput) => {
-    const normalizedAccount = normalizeAccount(input.account);
-    const users = readUsers();
-    const userIndex = users.findIndex((item) => item.account === normalizedAccount);
-
-    if (userIndex === -1) {
-      throw new Error('账号不存在，请确认手机号或邮箱是否正确。');
-    }
-
-    verifyCode(normalizedAccount, input.code);
-
-    if (input.newPassword.trim().length < 8) {
-      throw new Error('新密码至少需要 8 位。');
-    }
-
-    const updatedUsers = users.map((u, i) => (i === userIndex ? { ...u, password: input.newPassword } : u));
-    writeUsers(updatedUsers);
-  };
+  // ── Update profile ──
 
   const updateProfile = (input: { displayName: string }) => {
     if (!user) return;
@@ -415,7 +358,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(updatedUser);
   };
 
+  // ── Logout ──
+
   const logout = () => {
+    if (isRemoteMode) {
+      apiLogout().catch(() => {});
+      removeStoredValue(TOKEN_STORAGE_KEY);
+    }
     removeStoredValue(SESSION_STORAGE_KEY);
     setUser(null);
   };
@@ -425,13 +374,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         user,
         isAuthenticated: Boolean(user),
+        isRemoteMode,
         mockUsers,
-        sendVerificationCode,
         register,
         loginWithPassword,
-        loginWithCode,
         loginAsMockRole,
-        resetPassword,
         updateProfile,
         logout,
         detectChannel: detectAuthChannel,

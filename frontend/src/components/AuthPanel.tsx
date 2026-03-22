@@ -34,7 +34,7 @@ function getErrorMessage(error: unknown) {
 }
 
 export function AuthPanel({ onSuccess, preferredRole, preferredRoleLabel }: AuthPanelProps) {
-  const { user, logout, sendVerificationCode, register, loginWithPassword, loginWithCode, loginAsMockRole, resetPassword, detectChannel } = useAuth();
+  const { user, logout, isRemoteMode, sendVerificationCode, register, loginWithPassword, loginWithCode, loginAsMockRole, resetPassword, detectChannel } = useAuth();
   const isStudent = preferredRole === 'student';
   const [authMode, setAuthMode] = useState<AuthMode>('login');
   const [loginMode, setLoginMode] = useState<LoginMode>('password');
@@ -80,7 +80,7 @@ export function AuthPanel({ onSuccess, preferredRole, preferredRoleLabel }: Auth
     };
   }, [loginCountdown, registerCountdown, forgotCountdown]);
 
-  const requestCode = (account: string, scope: 'register' | 'login' | 'forgot') => {
+  const requestCode = async (account: string, scope: 'register' | 'login' | 'forgot') => {
     const channel = detectChannel(account);
     if (!channel) {
       setFeedback({
@@ -90,14 +90,23 @@ export function AuthPanel({ onSuccess, preferredRole, preferredRoleLabel }: Auth
       return;
     }
 
+    const purpose = scope === 'register' ? 'REGISTER' : 'LOGIN';
+
     try {
-      const result = sendVerificationCode(account);
+      const result = await sendVerificationCode(account, purpose);
       const targetLabel = result.channel === 'phone' ? '短信' : '邮件';
 
-      setFeedback({
-        tone: 'info',
-        message: `${targetLabel}验证码已生成，演示环境验证码为 ${result.code}，5 分钟内有效。生产环境请接入真实短信或邮件网关。`,
-      });
+      if (result.code) {
+        setFeedback({
+          tone: 'info',
+          message: `${targetLabel}验证码已生成，演示环境验证码为 ${result.code}，5 分钟内有效。`,
+        });
+      } else {
+        setFeedback({
+          tone: 'info',
+          message: `${targetLabel}验证码已发送到您的${targetLabel === '短信' ? '手机' : '邮箱'}，5 分钟内有效。`,
+        });
+      }
 
       if (scope === 'register') {
         setRegisterCountdown(60);
@@ -111,7 +120,7 @@ export function AuthPanel({ onSuccess, preferredRole, preferredRoleLabel }: Auth
     }
   };
 
-  const submitRegister = (event: FormEvent<HTMLFormElement>) => {
+  const submitRegister = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (registerForm.displayName.trim().length < 2) {
@@ -125,7 +134,7 @@ export function AuthPanel({ onSuccess, preferredRole, preferredRoleLabel }: Auth
     }
 
     try {
-      const nextUser = register({
+      const nextUser = await register({
         displayName: registerForm.displayName,
         role: preferredRole,
         account: registerForm.account,
@@ -143,11 +152,11 @@ export function AuthPanel({ onSuccess, preferredRole, preferredRoleLabel }: Auth
     }
   };
 
-  const submitLoginWithPassword = (event: FormEvent<HTMLFormElement>) => {
+  const submitLoginWithPassword = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     try {
-      const nextUser = loginWithPassword(loginPasswordForm);
+      const nextUser = await loginWithPassword(loginPasswordForm);
       setFeedback({
         tone: 'success',
         message: '登录成功，正在进入对应工作台。',
@@ -158,11 +167,11 @@ export function AuthPanel({ onSuccess, preferredRole, preferredRoleLabel }: Auth
     }
   };
 
-  const submitLoginWithCode = (event: FormEvent<HTMLFormElement>) => {
+  const submitLoginWithCode = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     try {
-      const nextUser = loginWithCode(loginCodeForm);
+      const nextUser = await loginWithCode(loginCodeForm);
       setFeedback({
         tone: 'success',
         message: '登录成功，正在进入对应工作台。',
@@ -173,7 +182,7 @@ export function AuthPanel({ onSuccess, preferredRole, preferredRoleLabel }: Auth
     }
   };
 
-  const submitForgotPassword = (event: FormEvent<HTMLFormElement>) => {
+  const submitForgotPassword = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (forgotForm.password !== forgotForm.confirmPassword) {
@@ -182,7 +191,7 @@ export function AuthPanel({ onSuccess, preferredRole, preferredRoleLabel }: Auth
     }
 
     try {
-      resetPassword({ account: forgotForm.account, code: forgotForm.code, newPassword: forgotForm.password });
+      await resetPassword({ account: forgotForm.account, code: forgotForm.code, newPassword: forgotForm.password });
       setFeedback({ tone: 'success', message: '密码已重置，请使用新密码登录。' });
       setForgotForm({ account: '', code: '', password: '', confirmPassword: '' });
       setAuthMode('login');
@@ -229,7 +238,9 @@ export function AuthPanel({ onSuccess, preferredRole, preferredRoleLabel }: Auth
           </div>
         </div>
         <div className="callout soft auth-callout">
-          当前演示版认证数据存储在浏览器本地，正式环境建议将验证码、账号和会话迁移到服务端，并接入国内短信/邮件服务。
+          {isRemoteMode
+            ? '账号数据存储在服务端，退出浏览器后重新登录即可恢复。'
+            : '当前演示版认证数据存储在浏览器本地，正式环境建议将验证码、账号和会话迁移到服务端，并接入国内短信/邮件服务。'}
         </div>
         <div className="auth-mock-panel auth-mock-panel--session">
           <div>
@@ -481,25 +492,27 @@ export function AuthPanel({ onSuccess, preferredRole, preferredRoleLabel }: Auth
               autoComplete="username"
             />
           </label>
-          <div className="auth-code-row">
-            <label className="field auth-code-row__field">
-              <span>验证码</span>
-              <input
-                value={registerForm.code}
-                onChange={(event) => setRegisterForm((current) => ({ ...current, code: event.target.value }))}
-                placeholder="6位验证码"
-                inputMode="numeric"
-              />
-            </label>
-            <button
-              type="button"
-              className="button auth-code-button"
-              onClick={() => requestCode(registerForm.account, 'register')}
-              disabled={registerCountdown > 0}
-            >
-              {registerCountdown > 0 ? `${registerCountdown}s 后重发` : '获取验证码'}
-            </button>
-          </div>
+          {!isRemoteMode && (
+            <div className="auth-code-row">
+              <label className="field auth-code-row__field">
+                <span>验证码</span>
+                <input
+                  value={registerForm.code}
+                  onChange={(event) => setRegisterForm((current) => ({ ...current, code: event.target.value }))}
+                  placeholder="6位验证码"
+                  inputMode="numeric"
+                />
+              </label>
+              <button
+                type="button"
+                className="button auth-code-button"
+                onClick={() => requestCode(registerForm.account, 'register')}
+                disabled={registerCountdown > 0}
+              >
+                {registerCountdown > 0 ? `${registerCountdown}s 后重发` : '获取验证码'}
+              </button>
+            </div>
+          )}
           <div className="auth-grid">
             <label className="field">
               <span>密码</span>
