@@ -41,9 +41,8 @@ jobs:
 
       - name: Find JAR file
         id: find-jar
-        working-directory: backend
         run: |
-          JAR_FILE=$(ls target/*.jar | grep -v '.original' | head -1)
+          JAR_FILE=$(ls backend/target/*.jar | grep -v '.original' | head -1)
           echo "jar_file=$JAR_FILE" >> "$GITHUB_OUTPUT"
           echo "Found JAR: $JAR_FILE"
 
